@@ -60,50 +60,26 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Sample Dataset Generator (Retail & Sales)
-    loadSampleBtn.addEventListener("click", () => {
-        const rows = [
-            "customer_id,customer_age,region,service_type,time_of_day,waiting_time,purchase_amount,spending_score,transaction_timestamp",
-        ];
-
-        const regions = ["East", "West", "North", "South"];
-        const services = ["Standard", "Express", "VIP"];
-        const times = ["Morning", "Afternoon", "Evening"];
-
-        for (let i = 1; i <= 150; i++) {
-            const age = 18 + Math.floor(Math.random() * 55);
-            const region = regions[i % regions.length];
-            const service = services[i % services.length];
-            const time = times[i % times.length];
-            
-            // Interaction effect on wait time: Express in Evening takes longer
-            let wait = 12 + Math.floor(Math.random() * 8);
-            if (service === "Express" && time === "Evening") {
-                wait += 42;
-            } else if (service === "VIP") {
-                wait = 4;
-            }
-
-            // Strong correlation: Age directly scales purchase amount
-            const basePurchase = 20 + (age * 4.5) + (Math.random() * 15);
-            // East group has much higher spending score (+50%)
-            const spending = region === "East" ? 184.2 : 110.5;
-
-            const hour = time === "Morning" ? "09" : (time === "Afternoon" ? "14" : "19");
-            const timestamp = `2026-03-${String(10 + (i % 15)).padStart(2, '0')} ${hour}:15:00`;
-
-            rows.push(`${i},${age},${region},${service},${time},${wait},${basePurchase.toFixed(2)},${spending},${timestamp}`);
+    // Sample Dataset Loader (3,500 rows)
+    loadSampleBtn.addEventListener("click", async () => {
+        try {
+            loadSampleBtn.textContent = "Loading 3,500 rows...";
+            const res = await fetch("/static/samples/retail_sales_3500_records.csv");
+            if (!res.ok) throw new Error("Could not fetch sample dataset");
+            const blob = await res.blob();
+            const file = new File([blob], "retail_sales_3500_records.csv", { type: "text/csv" });
+            await handleFileUpload(file);
+        } catch (err) {
+            alert(`Error loading sample: ${err.message}`);
+        } finally {
+            loadSampleBtn.textContent = "⚡ Quick Load 3,500 Rows";
         }
-
-        const csvContent = rows.join("\n");
-        const blob = new Blob([csvContent], { type: "text/csv" });
-        const file = new File([blob], "retail_sales_demo.csv", { type: "text/csv" });
-        handleFileUpload(file);
     });
 
     async function handleFileUpload(file) {
-        if (!file.name.toLowerCase().endsWith(".csv")) {
-            alert("Please upload a .csv file.");
+        const lower = file.name.toLowerCase();
+        if (!lower.endsWith(".csv") && !lower.endsWith(".xlsx") && !lower.endsWith(".xls")) {
+            alert("Please upload a .csv or .xlsx file.");
             return;
         }
 

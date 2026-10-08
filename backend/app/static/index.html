@@ -57,7 +57,7 @@
         <!-- Upload & Dataset Panel -->
         <section class="card upload-card" id="uploadSection">
             <div class="upload-dropzone" id="dropzone">
-                <input type="file" id="fileInput" accept=".csv" class="file-input" />
+                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" class="file-input" />
                 <div class="dropzone-icon">
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -65,13 +65,21 @@
                         <line x1="12" y1="3" x2="12" y2="15"></line>
                     </svg>
                 </div>
-                <h3 class="dropzone-title">Upload a CSV Dataset</h3>
-                <p class="dropzone-desc">Drag & drop your CSV file here, or click to browse</p>
+                <h3 class="dropzone-title">Upload a CSV or Excel Dataset</h3>
+                <p class="dropzone-desc">Drag & drop your .csv or .xlsx file here, or click to browse</p>
                 <div class="quick-sample-box">
-                    <span>Or test immediately:</span>
+                    <span>Sample Dataset (3,500 rows):</span>
                     <button type="button" class="btn-sample" id="loadSampleBtn">
-                        Load Sample Sales & Retail Dataset
+                        ⚡ Quick Load 3,500 Rows
                     </button>
+                    <span class="sample-divider">•</span>
+                    <a href="/static/samples/retail_sales_3500_records.csv" download="retail_sales_3500_records.csv" class="sample-link">
+                        Download CSV
+                    </a>
+                    <span class="sample-divider">•</span>
+                    <a href="/static/samples/retail_sales_3500_records.xlsx" download="retail_sales_3500_records.xlsx" class="sample-link">
+                        Download Excel (.xlsx)
+                    </a>
                 </div>
             </div>
 

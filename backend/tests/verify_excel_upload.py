@@ -58,12 +58,15 @@ def test_excel_and_csv_samples():
     print(f" - Compute Time: {disc_res['summary']['execution_time_ms']} ms")
     
     for i, f in enumerate(disc_res["findings"], 1):
-        print(f"\n{i}. [{f['type'].upper()}] {f['title']}")
+        title = f['title'].encode('ascii', errors='replace').decode('ascii')
+        expl = f['explanation'].encode('ascii', errors='replace').decode('ascii')
+        print(f"\n{i}. [{f['type'].upper()}] {title}")
         print(f"   Columns: {f['columns']}")
         print(f"   Metric: {f['metric']}")
-        print(f"   Explanation: {f['explanation']}")
+        print(f"   Explanation: {expl}")
         if f.get("caution"):
-            print(f"   Caution: {f['caution']}")
+            caut = f['caution'].encode('ascii', errors='replace').decode('ascii')
+            print(f"   Caution: {caut}")
 
     assert disc_res["summary"]["findings_returned"] > 0
     print("\n[SUCCESS] Excel dataset upload and Questionless Discovery fully verified!")

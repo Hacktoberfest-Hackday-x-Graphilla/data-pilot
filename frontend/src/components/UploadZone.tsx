@@ -34,8 +34,12 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
     setValidationError(null);
     if (onClearError) onClearError();
 
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      setValidationError('Please upload a valid CSV file (.csv).');
+    const lower = file.name.toLowerCase();
+    const isCsv = lower.endsWith('.csv');
+    const isExcel = lower.endsWith('.xlsx') || lower.endsWith('.xls');
+
+    if (!isCsv && !isExcel) {
+      setValidationError('Please upload a valid CSV or Excel file (.csv, .xlsx, .xls).');
       return;
     }
 
@@ -157,7 +161,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
           onChange={handleFileInputChange}
           className="hidden"
           disabled={isUploading}
@@ -184,12 +188,12 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           <div className="space-y-2">
             <p className="text-sm font-medium text-zinc-900">
               <span className="text-indigo-600 hover:underline">
-                Choose a CSV file
+                Choose a CSV or Excel file
               </span>{' '}
               or drag and drop here
             </p>
             <p className="text-xs text-zinc-500">
-              CSV files up to 50MB • Statistical analysis performed automatically
+              .CSV or .XLSX files up to 50MB • Statistical analysis performed automatically
             </p>
           </div>
         )}

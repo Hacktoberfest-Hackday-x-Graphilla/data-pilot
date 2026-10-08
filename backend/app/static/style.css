@@ -256,6 +256,23 @@ body {
     color: #67e8f9;
 }
 
+.sample-divider {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.sample-link {
+    color: var(--accent-indigo);
+    font-weight: 500;
+    text-decoration: underline;
+    font-size: 0.85rem;
+    transition: color 0.15s ease;
+}
+
+.sample-link:hover {
+    color: #a5b4fc;
+}
+
 /* Dataset Meta Panel */
 .dataset-meta-panel {
     margin-top: 1.75rem;

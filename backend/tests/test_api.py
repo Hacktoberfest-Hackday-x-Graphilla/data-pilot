@@ -1,4 +1,5 @@
 import io
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
@@ -84,3 +85,24 @@ def test_upload_non_csv():
     )
     assert res.status_code == 400
     assert "only .csv" in res.json()["detail"].lower()
+
+def test_upload_excel_file():
+    df = pd.DataFrame({
+        "item": ["Widget A", "Widget B", "Widget C"],
+        "units": [10, 25, 40],
+        "revenue": [150.0, 375.0, 600.0]
+    })
+    buffer = io.BytesIO()
+    df.to_excel(buffer, index=False, engine="openpyxl")
+    buffer.seek(0)
+
+    res = client.post(
+        "/api/v1/datasets/upload",
+        files={"file": ("inventory.xlsx", buffer, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    assert res.status_code == 201
+    summary = res.json()
+    assert summary["row_count"] == 3
+    assert summary["column_count"] == 3
+    assert "revenue" in summary["columns"]
+
