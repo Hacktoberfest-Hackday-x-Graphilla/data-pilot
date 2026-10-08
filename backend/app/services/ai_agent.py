@@ -119,7 +119,11 @@ class AIAgentService:
         final_answer = ""
 
         for iteration in range(max_tool_iterations):
-            response = chat_session.send_message(current_message)
+            try:
+                response = chat_session.send_message(current_message)
+            except Exception as api_err:
+                final_answer = f"Gemini API Notice: {type(api_err).__name__}: {str(api_err)}"
+                break
 
             # Check if model requested function calls
             function_calls = response.function_calls
