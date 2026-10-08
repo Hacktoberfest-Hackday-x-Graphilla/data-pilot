@@ -4,7 +4,11 @@
       "command": "${workspaceFolder}/dev_mlh_mcp_server.exe",
       "args": [
         "--stdio"
-      ]
+      ],
+      "env": {
+        "DEV_API_KEY": "ijcn1tf9RNZnJWfcZecgMqng",
+        "DEVTO_API_KEY": "ijcn1tf9RNZnJWfcZecgMqng"
+      }
     }
   }
 }
