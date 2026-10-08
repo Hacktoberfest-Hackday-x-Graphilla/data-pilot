@@ -1,8 +1,6 @@
 import json
 from typing import Any, Optional
 import pandas as pd
-from google import genai
-from google.genai import types
 
 from app.config import settings
 from app.models.schemas import (
@@ -12,10 +10,15 @@ from app.models.schemas import (
     ToolTraceItem,
 )
 from app.services.dataset_store import dataset_store
+from app.services.providers import (
+    BaseLLMProvider,
+    GeminiProvider,
+    GemmaProvider,
+    ToolResultItem,
+)
 from app.tools.registry import (
     TOOL_MAP,
     execute_tool,
-    get_genai_tools,
     summarize_tool_result,
 )
 from app.tools.profiling import profile_dataset
@@ -45,18 +48,51 @@ STRICT OPERATIONAL RULES:
 class AIAgentService:
     """Orchestrates DataPilot's AI Analyst Agent loop with Python/Pandas tool execution."""
 
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        self.api_key = api_key if api_key is not None else settings.GEMINI_API_KEY
-        self.model_name = model or settings.GEMINI_MODEL
-        self._client: Optional[genai.Client] = None
+    def __init__(
+        self,
+        provider: Optional[BaseLLMProvider] = None,
+        provider_name: Optional[str] = None,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+    ):
+        target_provider = (provider_name or settings.AI_PROVIDER).lower()
+        if provider is not None:
+            self.provider = provider
+        elif target_provider == "gemma":
+            self.provider = GemmaProvider(api_key=api_key, model=model)
+        else:
+            self.provider = GeminiProvider(api_key=api_key, model=model)
 
     @property
-    def client(self) -> genai.Client:
-        if self._client is None:
-            if not self.api_key or not self.api_key.strip():
-                raise ValueError("GEMINI_API_KEY is not configured in environment.")
-            self._client = genai.Client(api_key=self.api_key)
-        return self._client
+    def api_key(self) -> str:
+        return getattr(self.provider, "api_key", "")
+
+    @api_key.setter
+    def api_key(self, val: str):
+        if hasattr(self.provider, "api_key"):
+            self.provider.api_key = val
+
+    @property
+    def model_name(self) -> str:
+        return getattr(self.provider, "model_name", "")
+
+    @model_name.setter
+    def model_name(self, val: str):
+        if hasattr(self.provider, "model_name"):
+            self.provider.model_name = val
+
+    @property
+    def client(self) -> Any:
+        return getattr(self.provider, "client", None)
+
+    @property
+    def _client(self) -> Any:
+        return getattr(self.provider, "_client", None)
+
+    @_client.setter
+    def _client(self, client: Any):
+        if hasattr(self.provider, "_client"):
+            self.provider._client = client
 
     def _build_dataset_context(self, df: pd.DataFrame, filename: str, dataset_id: str) -> str:
         """Constructs concise dataset metadata for model prompt without leaking excessive raw data."""
@@ -93,8 +129,9 @@ class AIAgentService:
         if df is None:
             raise KeyError(f"Dataset with ID '{dataset_id}' not found.")
 
-        if not self.api_key or not self.api_key.strip():
-            raise ValueError("GEMINI_API_KEY is not configured in environment.")
+        if self.provider.provider_name == "gemini":
+            if not self.api_key or not self.api_key.strip():
+                raise ValueError("GEMINI_API_KEY is not configured in environment.")
 
         meta = dataset_store.get_metadata(dataset_id) or {}
         filename = meta.get("filename", "dataset.csv")
@@ -105,41 +142,28 @@ class AIAgentService:
         tool_trace: list[ToolTraceItem] = []
         suggested_charts: list[dict[str, Any]] = []
 
-        # Configure GenAI client session
-        config = types.GenerateContentConfig(
-            system_instruction=SYSTEM_INSTRUCTION,
-            tools=get_genai_tools(),
-            temperature=0.2,
-        )
-
-        chat_session = self.client.chats.create(
-            model=self.model_name,
-            config=config,
-        )
-
-        current_message: Any = user_prompt
+        chat_session = self.provider.create_chat_session(system_instruction=SYSTEM_INSTRUCTION)
+        tool_results: list[ToolResultItem] = []
         final_answer = ""
 
         for iteration in range(max_tool_iterations):
             try:
-                response = chat_session.send_message(current_message)
+                if iteration == 0:
+                    current_response = chat_session.send_initial_message(user_prompt)
+                else:
+                    current_response = chat_session.send_tool_results(tool_results)
             except Exception as api_err:
-                final_answer = f"Gemini API Notice: {type(api_err).__name__}: {str(api_err)}"
+                final_answer = f"AI Provider Notice: {type(api_err).__name__}: {str(api_err)}"
                 break
 
-            # Check if model requested function calls
-            function_calls = response.function_calls
-
-            if not function_calls:
-                # No more function calls; model has provided its final text response
-                final_answer = response.text or ""
+            if not current_response.tool_calls:
+                final_answer = current_response.text or ""
                 break
 
-            # Process function calls
-            function_response_parts = []
-            for call in function_calls:
+            tool_results = []
+            for call in current_response.tool_calls:
                 tool_name = call.name
-                call_args = dict(call.args) if call.args else {}
+                call_args = call.arguments
 
                 # Strict security: ONLY execute registered tools from TOOL_MAP
                 if tool_name not in TOOL_MAP:
@@ -152,10 +176,12 @@ class AIAgentService:
                             summary=err_msg,
                         )
                     )
-                    function_response_parts.append(
-                        types.Part.from_function_response(
+                    tool_results.append(
+                        ToolResultItem(
+                            call_id=call.call_id,
                             name=tool_name,
-                            response={"error": err_msg},
+                            result={"error": err_msg},
+                            is_error=True,
                         )
                     )
                     continue
@@ -176,10 +202,12 @@ class AIAgentService:
                             data=tool_output,
                         )
                     )
-                    function_response_parts.append(
-                        types.Part.from_function_response(
+                    tool_results.append(
+                        ToolResultItem(
+                            call_id=call.call_id,
                             name=tool_name,
-                            response={"result": tool_output},
+                            result=tool_output,
+                            is_error=False,
                         )
                     )
                 except Exception as ex:
@@ -192,22 +220,18 @@ class AIAgentService:
                             summary=err_str,
                         )
                     )
-                    function_response_parts.append(
-                        types.Part.from_function_response(
+                    tool_results.append(
+                        ToolResultItem(
+                            call_id=call.call_id,
                             name=tool_name,
-                            response={"error": err_str},
+                            result={"error": err_str},
+                            is_error=True,
                         )
                     )
-
-            current_message = function_response_parts
         else:
-            # Exceeded max_tool_iterations without a final text response
-            try:
-                synthesis_prompt = "You have reached the maximum number of tool executions. Please summarize your findings and provide your final answer based on the computed evidence gathered so far."
-                final_res = chat_session.send_message(synthesis_prompt)
-                final_answer = final_res.text or "Analysis completed with available tool evidence."
-            except Exception:
-                final_answer = "Maximum analysis iterations reached. The gathered tool evidence has been recorded in the trace."
+            final_answer = chat_session.send_synthesis_prompt(
+                "You have reached the maximum number of tool executions. Please summarize your findings and provide your final answer based on the computed evidence gathered so far."
+            )
 
         return ChatResponse(
             dataset_id=dataset_id,
@@ -336,7 +360,7 @@ class AIAgentService:
             except Exception as e:
                 pass
 
-        # Synthesize findings using Gemini (with deterministic rule-based fallback if offline)
+        # Synthesize findings using LLM Provider (with deterministic fallback)
         findings, summary_text = self._synthesize_investigation(filename, collected_evidence)
 
         return InvestigateResponse(
@@ -352,7 +376,7 @@ class AIAgentService:
         filename: str,
         evidence: dict[str, Any]
     ) -> tuple[list[InvestigationFinding], str]:
-        """Synthesizes structured findings from tool calculations using Gemini, with deterministic fallback."""
+        """Synthesizes structured findings from tool calculations using LLM Provider, with deterministic fallback."""
         findings: list[InvestigationFinding] = []
 
         # Deterministic extraction of core observations
@@ -396,20 +420,16 @@ class AIAgentService:
         col_cnt = profile.get("column_count", 0)
         summary_text = f"Dataset '{filename}' analyzed ({row_cnt} records, {col_cnt} columns). Identified {len(findings)} key findings across anomalies, correlations, and feature distributions."
 
-        # Attempt to enrich with Gemini if client is active
+        # Attempt to enrich with Provider if configured
         try:
-            if settings.has_gemini_key:
-                enrich_prompt = (
-                    f"Dataset: {filename} ({row_cnt} rows, {col_cnt} columns).\n"
-                    f"Computed Evidence:\n{json.dumps(evidence, default=str)[:3000]}\n\n"
-                    f"Task: Provide a 2-sentence executive summary of the most important takeaways from this evidence."
-                )
-                res = self.client.models.generate_content(
-                    model=self.model_name,
-                    contents=enrich_prompt,
-                )
-                if res.text and len(res.text.strip()) > 0:
-                    summary_text = res.text.strip()
+            enrich_prompt = (
+                f"Dataset: {filename} ({row_cnt} rows, {col_cnt} columns).\n"
+                f"Computed Evidence:\n{json.dumps(evidence, default=str)[:3000]}\n\n"
+                f"Task: Provide a 2-sentence executive summary of the most important takeaways from this evidence."
+            )
+            enrich_text = self.provider.generate_text(enrich_prompt)
+            if enrich_text and len(enrich_text.strip()) > 0:
+                summary_text = enrich_text.strip()
         except Exception:
             # Fall back cleanly to deterministic summary
             pass

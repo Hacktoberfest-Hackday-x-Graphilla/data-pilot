@@ -154,6 +154,16 @@ def get_genai_tools() -> list[types.Tool]:
     """Wraps registered tool declarations into Google GenAI SDK Tool specifications."""
     return [types.Tool(function_declarations=GEMINI_FUNCTION_DECLARATIONS)]
 
+def get_openai_tools() -> list[dict[str, Any]]:
+    """Converts the registered function declarations into OpenAI-compatible tool specifications."""
+    return [
+        {
+            "type": "function",
+            "function": decl,
+        }
+        for decl in GEMINI_FUNCTION_DECLARATIONS
+    ]
+
 def normalize_tool_parameters(tool_name: str, parameters: Optional[dict[str, Any]] = None) -> dict[str, Any]:
     """Normalizes parameter names and formats to ensure model parameter variations map to tool implementations."""
     if not parameters:
