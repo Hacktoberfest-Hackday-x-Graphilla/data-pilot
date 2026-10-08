@@ -584,7 +584,7 @@ class DiscoveryEngine:
             null_count = int(df[col].isna().sum())
             null_pct = round((null_count / total_rows) * 100.0, 1)
             if null_pct >= 25.0:
-                score = min(40.0, null_pct * 0.5) + 10.0
+                score = 50.0 + min(25.0, null_pct * 0.5)
                 candidates.append({
                     "id": f"dq_null_{cand_idx:03d}",
                     "type": "data_quality",
@@ -630,7 +630,7 @@ class DiscoveryEngine:
                     "explanation": f"Column '{col}' contains only a single constant value ('{const_val}') across all non-null entries.",
                     "caution": "Constant variables carry zero variance and provide no analytical or discriminatory signal.",
                     "importance": "medium",
-                    "discovery_score": 28.0,
+                    "discovery_score": 55.0,
                 })
                 cand_idx += 1
 
@@ -651,7 +651,7 @@ class DiscoveryEngine:
                         "explanation": f"Columns '{c1}' and '{c2}' have 100% identical values across all rows, indicating redundant data.",
                         "caution": "One of these columns may be redundant or an unversioned copy of the other.",
                         "importance": "high",
-                        "discovery_score": 35.0,
+                        "discovery_score": 65.0,
                     })
                     cand_idx += 1
 
@@ -670,7 +670,7 @@ class DiscoveryEngine:
                     outlier_pct = round((outlier_count / len(series)) * 100.0, 1)
 
                     if outlier_pct >= 2.0:
-                        score = min(35.0, outlier_pct * 3.0) + 15.0
+                        score = 50.0 + min(25.0, outlier_pct * 3.0)
                         candidates.append({
                             "id": f"dq_outlier_{cand_idx:03d}",
                             "type": "data_quality",
@@ -701,41 +701,68 @@ class DiscoveryEngine:
     # Deterministic Candidate Ranking & Redundancy Filter
     # -------------------------------------------------------------------------
     def _rank_candidates(self, candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Ranks candidate findings deterministically using discovery score and redundancy dampening."""
+        """Ranks candidate findings deterministically using discovery score and category diversity interleaving."""
         if not candidates:
             return []
 
         # Sort initially by raw discovery score descending
         sorted_cand = sorted(candidates, key=lambda c: c.get("discovery_score", 0.0), reverse=True)
 
-        ranked: list[dict[str, Any]] = []
+        # Apply redundancy penalty if exact same column pair already included
         seen_pairs: set[frozenset] = set()
-        type_counts: dict[str, int] = {}
-
+        adjusted: list[dict[str, Any]] = []
         for item in sorted_cand:
-            c_type = item.get("type", "unknown")
             cols = item.get("columns", [])
             pair_key = frozenset(cols[:2]) if len(cols) >= 2 else frozenset(cols)
-
-            current_score = item.get("discovery_score", 0.0)
-
-            # Redundancy penalty if exact same column pair already included
+            score = item.get("discovery_score", 0.0)
             if pair_key in seen_pairs:
-                current_score *= 0.65
-
-            # Diversity balance: softly penalize if one type dominates heavily
-            if type_counts.get(c_type, 0) >= 3:
-                current_score *= 0.8
-
-            item["discovery_score"] = round(current_score, 2)
-            ranked.append(item)
-
+                score *= 0.65
+            item["discovery_score"] = round(score, 2)
             seen_pairs.add(pair_key)
-            type_counts[c_type] = type_counts.get(c_type, 0) + 1
+            adjusted.append(item)
 
-        # Re-sort after applying redundancy dampening
-        ranked.sort(key=lambda c: c.get("discovery_score", 0.0), reverse=True)
+        # Group by category type
+        by_type: dict[str, list[dict[str, Any]]] = {}
+        for item in adjusted:
+            t = item.get("type", "other")
+            by_type.setdefault(t, []).append(item)
+
+        # Sort each type's candidates by score
+        for t in by_type:
+            by_type[t].sort(key=lambda c: c.get("discovery_score", 0.0), reverse=True)
+
+        # Interleave across discovery types in priority order
+        priority_order = [
+            "correlation",
+            "group_difference",
+            "interaction",
+            "time_pattern",
+            "data_quality",
+            "category_numeric",
+        ]
+
+        ranked: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+
+        # Pass 1: Ensure top 2 from each category are promoted
+        for pass_round in range(2):
+            for cat_type in priority_order:
+                cat_list = by_type.get(cat_type, [])
+                if len(cat_list) > pass_round:
+                    cand = cat_list[pass_round]
+                    if cand["id"] not in seen_ids:
+                        ranked.append(cand)
+                        seen_ids.add(cand["id"])
+
+        # Pass 2: Fill remainder ordered by discovery score
+        adjusted.sort(key=lambda c: c.get("discovery_score", 0.0), reverse=True)
+        for item in adjusted:
+            if item["id"] not in seen_ids:
+                ranked.append(item)
+                seen_ids.add(item["id"])
+
         return ranked
+
 
     # -------------------------------------------------------------------------
     # LLM Ranking & Explanation Synthesis Layer
