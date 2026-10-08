@@ -15,7 +15,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
-import { DiscoveryFinding } from '../api/types';
+import type { DiscoveryFinding } from '../api/types';
 import { VisualCallout } from './VisualCallout';
 
 interface DiscoveryCardProps {

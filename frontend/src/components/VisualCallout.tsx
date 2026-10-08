@@ -1,5 +1,4 @@
-import React from 'react';
-import { DiscoveryFinding } from '../api/types';
+import type { DiscoveryFinding } from '../api/types';
 
 interface VisualCalloutProps {
   finding: DiscoveryFinding;

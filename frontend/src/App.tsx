@@ -8,7 +8,7 @@ import { DiscoveryReportView } from './components/DiscoveryReportView';
 import { ErrorState } from './components/ErrorState';
 import { uploadDataset, profileDataset } from './api/datasets';
 import { discoverPatterns, checkHealth } from './api/discovery';
-import {
+import type {
   DatasetSummary,
   ProfileReport,
   DiscoveryResponse,

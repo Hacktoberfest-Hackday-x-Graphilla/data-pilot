@@ -1,5 +1,5 @@
 import { request } from './client';
-import { DatasetSummary, ProfileReport } from './types';
+import type { DatasetSummary, ProfileReport } from './types';
 
 export async function uploadDataset(file: File): Promise<DatasetSummary> {
   const formData = new FormData();

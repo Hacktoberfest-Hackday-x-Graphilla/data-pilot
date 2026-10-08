@@ -1,6 +1,5 @@
-import React from 'react';
 import { Compass, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { HealthResponse } from '../api/types';
+import type { HealthResponse } from '../api/types';
 
 interface HeaderProps {
   health: HealthResponse | null;

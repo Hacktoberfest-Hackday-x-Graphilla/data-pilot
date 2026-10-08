@@ -1,5 +1,5 @@
 import { request } from './client';
-import { DiscoveryResponse, HealthResponse } from './types';
+import type { DiscoveryResponse, HealthResponse } from './types';
 
 export async function discoverPatterns(
   datasetId: string,

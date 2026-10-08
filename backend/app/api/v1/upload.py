@@ -12,10 +12,13 @@ async def upload_dataset(file: UploadFile = File(...)):
     """Uploads, validates, and parses a CSV dataset into memory."""
     filename = file.filename or "dataset.csv"
     
-    if not filename.lower().endswith(".csv"):
+    is_csv = filename.lower().endswith(".csv")
+    is_excel = filename.lower().endswith((".xlsx", ".xls"))
+    
+    if not (is_csv or is_excel):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported file format for '{filename}'. Only .csv files are supported.",
+            detail=f"Unsupported file format for '{filename}'. Only .csv, .xlsx, and .xls files are supported.",
         )
 
     try:
@@ -29,25 +32,35 @@ async def upload_dataset(file: UploadFile = File(...)):
     if len(content) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The uploaded CSV file is empty.",
+            detail="The uploaded file is empty.",
         )
 
-    # Attempt parsing with encoding fallbacks (utf-8, latin1)
     df = None
-    parse_errors = []
-    for encoding in ["utf-8", "latin1", "cp1252"]:
+    if is_excel:
         try:
             buffer = io.BytesIO(content)
-            df = pd.read_csv(buffer, encoding=encoding)
-            break
+            df = pd.read_excel(buffer)
         except Exception as e:
-            parse_errors.append(f"{encoding}: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Could not parse file as Excel spreadsheet: {str(e)}",
+            )
+    else:
+        # Attempt parsing with encoding fallbacks (utf-8, latin1, cp1252)
+        parse_errors = []
+        for encoding in ["utf-8", "latin1", "cp1252"]:
+            try:
+                buffer = io.BytesIO(content)
+                df = pd.read_csv(buffer, encoding=encoding)
+                break
+            except Exception as e:
+                parse_errors.append(f"{encoding}: {str(e)}")
 
-    if df is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Could not parse file as CSV. Parsing errors: {'; '.join(parse_errors)}",
-        )
+        if df is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Could not parse file as CSV. Parsing errors: {'; '.join(parse_errors)}",
+            )
 
     if df.empty and len(df.columns) == 0:
         raise HTTPException(

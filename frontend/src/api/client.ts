@@ -1,4 +1,4 @@
-import { ApiErrorResponse } from './types';
+import type { ApiErrorResponse } from './types';
 
 // Use Vite proxy by default, or explicit environment variable if supplied
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';

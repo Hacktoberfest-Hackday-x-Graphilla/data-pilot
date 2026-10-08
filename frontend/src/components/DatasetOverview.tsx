@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   Trash2,
 } from 'lucide-react';
-import { DatasetSummary, ProfileReport } from '../api/types';
+import type { DatasetSummary, ProfileReport } from '../api/types';
 
 interface DatasetOverviewProps {
   dataset: DatasetSummary;

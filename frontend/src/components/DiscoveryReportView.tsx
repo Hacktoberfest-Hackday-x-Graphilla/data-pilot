@@ -1,13 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
-  FileText,
   Filter,
-  CheckCircle,
-  Timer,
-  Layers,
   Sparkles,
 } from 'lucide-react';
-import { DiscoveryResponse } from '../api/types';
+import type { DiscoveryResponse } from '../api/types';
 import { DiscoveryCard } from './DiscoveryCard';
 import { EmptyState } from './EmptyState';
 

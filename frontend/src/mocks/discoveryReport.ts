@@ -1,4 +1,4 @@
-import { DiscoveryResponse } from '../api/types';
+import type { DiscoveryResponse } from '../api/types';
 
 /**
  * Isolated mock fixture for local UI testing, storybook, or offline testing.
