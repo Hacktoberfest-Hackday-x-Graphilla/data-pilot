@@ -162,7 +162,9 @@ def test_data_quality_discovery(discovery_df):
     response = engine.discover(summary.dataset_id, max_findings=15)
 
     dq_findings = [f for f in response.findings if f.type == "data_quality"]
+    print("DQ FINDINGS IN TEST:", [(f.id, f.title, f.columns, f.metric) for f in dq_findings])
     assert len(dq_findings) >= 2
+
 
     # Check high missingness found
     null_dq = next((f for f in dq_findings if "incomplete_data" in f.columns), None)
