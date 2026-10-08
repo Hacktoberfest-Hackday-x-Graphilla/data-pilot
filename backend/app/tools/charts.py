@@ -7,17 +7,30 @@ SUPPORTED_CHART_TYPES = {"bar", "line", "scatter", "histogram", "box"}
 def create_chart(
     df: pd.DataFrame,
     chart_type: str,
-    x: str,
+    x: Optional[str] = None,
     y: Optional[str] = None,
     group_by: Optional[str] = None,
     title: Optional[str] = None,
     aggregation: Optional[str] = "mean",
-    max_data_points: int = 100
+    max_data_points: int = 100,
+    **kwargs: Any
 ) -> dict[str, Any]:
     """Generates declarative chart specifications and data points for frontend visualization."""
     chart_type = chart_type.lower()
     if chart_type not in SUPPORTED_CHART_TYPES:
         raise ValueError(f"Chart type '{chart_type}' is not supported. Supported: {list(SUPPORTED_CHART_TYPES)}")
+
+    x_col = x or kwargs.get("x_axis")
+    if not x_col:
+        raise ValueError("Missing required 'x' column for chart creation.")
+    x = x_col
+
+    y_col = y or kwargs.get("y_axis")
+    y = y_col
+
+    agg = aggregation or kwargs.get("aggregations") or "mean"
+    if isinstance(agg, list):
+        agg = agg[0] if agg else "mean"
 
     if x not in df.columns:
         raise ValueError(f"Column '{x}' does not exist in dataset.")

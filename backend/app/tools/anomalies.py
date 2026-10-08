@@ -5,18 +5,23 @@ from app.tools.profiling import _sanitize_val
 
 def detect_anomalies(
     df: pd.DataFrame,
-    columns: Optional[list[str]] = None,
+    columns: Optional[Any] = None,
     method: str = "iqr",
-    threshold: Optional[float] = None
+    threshold: Optional[float] = None,
+    **kwargs: Any
 ) -> dict[str, Any]:
     """Detects statistical outliers in numerical features using IQR or Z-score methods."""
     method = method.lower()
     if method not in ("iqr", "zscore"):
         raise ValueError("Method must be either 'iqr' or 'zscore'.")
 
+    cols = columns if columns is not None else kwargs.get("column")
+    if isinstance(cols, str):
+        cols = [cols]
+
     # Select numerical columns
-    if columns:
-        valid_cols = [c for c in columns if c in df.columns and pd.api.types.is_numeric_dtype(df[c])]
+    if cols:
+        valid_cols = [c for c in cols if c in df.columns and pd.api.types.is_numeric_dtype(df[c])]
     else:
         valid_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c]) and not pd.api.types.is_bool_dtype(df[c])]
 

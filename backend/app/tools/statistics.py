@@ -5,10 +5,17 @@ from app.tools.profiling import _sanitize_val
 
 def calculate_statistics(
     df: pd.DataFrame,
-    columns: Optional[list[str]] = None
+    columns: Optional[Any] = None,
+    **kwargs: Any
 ) -> dict[str, Any]:
     """Calculates summary statistics for numerical and categorical columns."""
-    target_cols = columns if columns else [str(c) for c in df.columns]
+    cols = columns if columns is not None else kwargs.get("column")
+    if isinstance(cols, str):
+        target_cols = [cols]
+    elif cols:
+        target_cols = [str(c) for c in cols]
+    else:
+        target_cols = [str(c) for c in df.columns]
     valid_cols = [c for c in target_cols if c in df.columns]
 
     if not valid_cols:

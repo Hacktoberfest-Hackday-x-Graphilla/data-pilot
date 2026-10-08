@@ -5,20 +5,28 @@ from app.tools.profiling import _sanitize_val
 
 def find_correlations(
     df: pd.DataFrame,
-    columns: Optional[list[str]] = None,
+    columns: Optional[Any] = None,
     method: str = "pearson",
-    min_threshold: float = 0.0
+    min_threshold: Optional[float] = None,
+    **kwargs: Any
 ) -> dict[str, Any]:
     """Computes correlation matrix and identifies the strongest pairwise relationships."""
     method = method.lower()
     if method not in ("pearson", "spearman", "kendall"):
         raise ValueError("Method must be 'pearson', 'spearman', or 'kendall'.")
 
+    cols = columns if columns is not None else kwargs.get("column")
+    if isinstance(cols, str):
+        cols = [cols]
+
     # Select numerical columns
-    if columns:
-        valid_cols = [c for c in columns if c in df.columns and pd.api.types.is_numeric_dtype(df[c])]
+    if cols:
+        valid_cols = [c for c in cols if c in df.columns and pd.api.types.is_numeric_dtype(df[c])]
     else:
         valid_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c]) and not pd.api.types.is_bool_dtype(df[c])]
+
+    thresh = min_threshold if min_threshold is not None else kwargs.get("threshold", 0.0)
+    min_threshold = float(thresh)
 
     if len(valid_cols) < 2:
         raise ValueError("Correlation analysis requires at least 2 numerical columns.")

@@ -29,16 +29,17 @@ MAX_TOOL_CALLS = 8
 
 SYSTEM_INSTRUCTION = """You are DataPilot, an expert AI data analyst.
 
-Your mission is to analyze the user's dataset and answer their analytical questions with factual, mathematical precision.
+Analyze the user's dataset using the available analytical tools.
 
 STRICT OPERATIONAL RULES:
-1. Never invent or hallucinate statistics, metrics, correlations, anomalies, or numbers.
+1. Never invent or hallucinate statistics, metrics, correlations, anomalies, or observations.
 2. The provided Python/Pandas tools are your SINGLE SOURCE OF TRUTH for all numerical calculations.
-3. Whenever numerical evidence is needed to answer a question or substantiate a claim, invoke the appropriate registered tool.
-4. You may call multiple tools step-by-step for complex questions (e.g. first inspect columns/groups, then calculate statistics or correlations, then create charts).
-5. Once you have collected sufficient evidence from tools, provide a structured, concise, natural-language explanation citing the specific computed figures.
-6. If the dataset does not contain sufficient columns or data rows to answer the question, state that clearly instead of guessing.
-7. Use the `create_chart` tool when visualization adds clarity to your findings.
+3. When numerical evidence is needed, invoke the appropriate registered tool. Never perform numerical analysis yourself when a registered tool can calculate it.
+4. Treat tool output as the source of truth.
+5. You may call multiple tools when necessary. For complex questions, investigate the data step by step.
+6. After gathering sufficient evidence, provide a concise explanation of the finding and mention the relevant evidence citing the specific computed figures.
+7. If the data is insufficient to answer a question, say so clearly instead of guessing.
+8. Use the `create_chart` tool when visualization adds clarity to your findings.
 """
 
 class AIAgentService:
@@ -57,7 +58,7 @@ class AIAgentService:
             self._client = genai.Client(api_key=self.api_key)
         return self._client
 
-    def _build_dataset_context(self, df: pd.DataFrame, filename: str) -> str:
+    def _build_dataset_context(self, df: pd.DataFrame, filename: str, dataset_id: str) -> str:
         """Constructs concise dataset metadata for model prompt without leaking excessive raw data."""
         row_count = len(df)
         col_count = len(df.columns)
@@ -74,10 +75,11 @@ class AIAgentService:
 
         return (
             f"DATASET CONTEXT:\n"
+            f"- Dataset ID: {dataset_id}\n"
             f"- Filename: {filename}\n"
             f"- Dimensions: {row_count} rows, {col_count} columns\n"
             f"- Columns & Types:\n" + "\n".join(col_info) + "\n"
-            f"- Sample Data (first 3 rows):\n{head_sample}\n"
+            f"- Sample Records (first 3 rows):\n{head_sample}\n"
         )
 
     def chat(
@@ -97,7 +99,7 @@ class AIAgentService:
         meta = dataset_store.get_metadata(dataset_id) or {}
         filename = meta.get("filename", "dataset.csv")
 
-        dataset_context = self._build_dataset_context(df, filename)
+        dataset_context = self._build_dataset_context(df, filename, dataset_id)
         user_prompt = f"{dataset_context}\n\nUSER QUESTION: {question}\n\nInvestigate using the appropriate analysis tools and answer with evidence."
 
         tool_trace: list[ToolTraceItem] = []
@@ -200,9 +202,12 @@ class AIAgentService:
             current_message = function_response_parts
         else:
             # Exceeded max_tool_iterations without a final text response
-            synthesis_prompt = "You have reached the maximum number of tool executions. Please summarize your findings and provide your final answer based on the computed evidence gathered so far."
-            final_res = chat_session.send_message(synthesis_prompt)
-            final_answer = final_res.text or "Analysis completed with available tool evidence."
+            try:
+                synthesis_prompt = "You have reached the maximum number of tool executions. Please summarize your findings and provide your final answer based on the computed evidence gathered so far."
+                final_res = chat_session.send_message(synthesis_prompt)
+                final_answer = final_res.text or "Analysis completed with available tool evidence."
+            except Exception:
+                final_answer = "Maximum analysis iterations reached. The gathered tool evidence has been recorded in the trace."
 
         return ChatResponse(
             dataset_id=dataset_id,
@@ -408,6 +413,10 @@ class AIAgentService:
         except Exception:
             # Fall back cleanly to deterministic summary
             pass
+
+        # Rank findings by importance (high first, then medium, then low)
+        importance_rank = {"high": 0, "medium": 1, "low": 2}
+        findings.sort(key=lambda f: importance_rank.get(f.importance, 3))
 
         return findings, summary_text
 

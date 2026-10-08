@@ -154,13 +154,65 @@ def get_genai_tools() -> list[types.Tool]:
     """Wraps registered tool declarations into Google GenAI SDK Tool specifications."""
     return [types.Tool(function_declarations=GEMINI_FUNCTION_DECLARATIONS)]
 
+def normalize_tool_parameters(tool_name: str, parameters: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    """Normalizes parameter names and formats to ensure model parameter variations map to tool implementations."""
+    if not parameters:
+        return {}
+    norm = dict(parameters)
+
+    if tool_name == "group_and_compare":
+        if "metrics" in norm and "metric_columns" not in norm:
+            norm["metric_columns"] = norm.pop("metrics")
+        elif "metric" in norm and "metric_columns" not in norm:
+            norm["metric_columns"] = norm.pop("metric")
+        if isinstance(norm.get("metric_columns"), str):
+            norm["metric_columns"] = [norm["metric_columns"]]
+        if "aggregation" in norm and "aggregations" not in norm:
+            norm["aggregations"] = norm.pop("aggregation")
+        if isinstance(norm.get("aggregations"), str):
+            norm["aggregations"] = [norm["aggregations"]]
+        if "group" in norm and "group_by" not in norm:
+            norm["group_by"] = norm.pop("group")
+
+    elif tool_name == "calculate_statistics":
+        if "column" in norm and "columns" not in norm:
+            norm["columns"] = norm.pop("column")
+        if isinstance(norm.get("columns"), str):
+            norm["columns"] = [norm["columns"]]
+
+    elif tool_name == "detect_anomalies":
+        if "column" in norm and "columns" not in norm:
+            norm["columns"] = norm.pop("column")
+        if isinstance(norm.get("columns"), str):
+            norm["columns"] = [norm["columns"]]
+
+    elif tool_name == "find_correlations":
+        if "column" in norm and "columns" not in norm:
+            norm["columns"] = norm.pop("column")
+        if isinstance(norm.get("columns"), str):
+            norm["columns"] = [norm["columns"]]
+        if "threshold" in norm and "min_threshold" not in norm:
+            norm["min_threshold"] = norm.pop("threshold")
+
+    elif tool_name == "create_chart":
+        if "type" in norm and "chart_type" not in norm:
+            norm["chart_type"] = norm.pop("type")
+        if "metric" in norm and "y" not in norm:
+            norm["y"] = norm.pop("metric")
+        if "x_axis" in norm and "x" not in norm:
+            norm["x"] = norm.pop("x_axis")
+        if "y_axis" in norm and "y" not in norm:
+            norm["y"] = norm.pop("y_axis")
+
+    return norm
+
 def execute_tool(df: pd.DataFrame, tool_name: str, parameters: Optional[dict[str, Any]] = None) -> Any:
     """Executes a registered tool against the provided dataframe with given parameters."""
     if tool_name not in TOOL_MAP:
         raise ValueError(f"Unknown tool '{tool_name}'. Available tools: {list(TOOL_MAP.keys())}")
 
     func = TOOL_MAP[tool_name]
-    params = parameters or {}
+    params = normalize_tool_parameters(tool_name, parameters)
     if tool_name == "profile_dataset":
         return func(df)
     return func(df, **params)

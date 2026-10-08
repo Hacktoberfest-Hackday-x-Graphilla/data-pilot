@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     
     # Gemini configuration
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.5-pro"
+    GEMINI_MODEL: str = "gemini-3-flash-preview"
     
     # DataPilot storage & limits
     MAX_UPLOAD_SIZE_MB: int = 50

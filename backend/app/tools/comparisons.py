@@ -7,18 +7,29 @@ SUPPORTED_AGGS = {"mean", "sum", "count", "median", "min", "max", "std"}
 def group_and_compare(
     df: pd.DataFrame,
     group_by: str,
-    metric_columns: list[str],
-    aggregations: Optional[list[str]] = None
+    metric_columns: Optional[Any] = None,
+    aggregations: Optional[Any] = None,
+    **kwargs: Any
 ) -> dict[str, Any]:
     """Groups dataset by categorical feature and computes comparative aggregations across metric columns."""
     if group_by not in df.columns:
         raise ValueError(f"Group column '{group_by}' does not exist in dataset.")
 
-    valid_metrics = [c for c in metric_columns if c in df.columns]
-    if not valid_metrics:
-        raise ValueError(f"None of the metric columns {metric_columns} exist in dataset.")
+    metrics_input = metric_columns if metric_columns is not None else kwargs.get("metrics", kwargs.get("metric"))
+    if metrics_input is None:
+        raise ValueError("metric_columns is required for group_and_compare.")
+    if isinstance(metrics_input, str):
+        metrics_input = [metrics_input]
 
-    aggs = [a.lower() for a in (aggregations or ["mean", "count"])]
+    valid_metrics = [c for c in metrics_input if c in df.columns]
+    if not valid_metrics:
+        raise ValueError(f"None of the metric columns {metrics_input} exist in dataset.")
+
+    aggs_input = aggregations if aggregations is not None else kwargs.get("aggregation", kwargs.get("agg", ["mean", "count"]))
+    if isinstance(aggs_input, str):
+        aggs_input = [aggs_input]
+
+    aggs = [a.lower() for a in aggs_input]
     invalid_aggs = [a for a in aggs if a not in SUPPORTED_AGGS]
     if invalid_aggs:
         raise ValueError(f"Unsupported aggregations: {invalid_aggs}. Supported: {list(SUPPORTED_AGGS)}")

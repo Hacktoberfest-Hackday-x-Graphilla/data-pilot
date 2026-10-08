@@ -1,10 +1,11 @@
+from pathlib import Path
 import json
 import httpx
 
 BASE_URL = "http://127.0.0.1:8000"
 
 def verify():
-    with httpx.Client(base_url=BASE_URL, timeout=45.0) as client:
+    with httpx.Client(base_url=BASE_URL, timeout=120.0) as client:
         # 1. Health check
         h = client.get("/health").json()
         print("[1] Health Check:", h)
@@ -12,7 +13,8 @@ def verify():
         assert h["gemini_key_configured"] is True
 
         # 2. Upload sample_data.csv
-        with open("backend/tests/sample_data.csv", "rb") as f:
+        csv_path = Path("tests/sample_data.csv") if Path("tests/sample_data.csv").exists() else Path("backend/tests/sample_data.csv")
+        with open(csv_path, "rb") as f:
             up = client.post("/api/v1/datasets/upload", files={"file": ("sample_data.csv", f, "text/csv")}).json()
         print("\n[2] Uploaded Dataset:", up["filename"], f"({up['row_count']} rows, {up['column_count']} cols)")
         ds_id = up["dataset_id"]
