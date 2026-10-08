@@ -738,12 +738,13 @@ class DiscoveryEngine:
         # Interleave across discovery types in priority order
         priority_order = [
             "correlation",
-            "group_difference",
-            "interaction",
-            "time_pattern",
             "data_quality",
+            "group_difference",
+            "time_pattern",
+            "interaction",
             "category_numeric",
         ]
+
 
         ranked: list[dict[str, Any]] = []
         seen_ids: set[str] = set()

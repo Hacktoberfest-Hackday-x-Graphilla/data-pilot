@@ -165,6 +165,8 @@ def test_data_quality_discovery(discovery_df):
     dq_findings = [f for f in response.findings if f.type == "data_quality"]
     assert len(dq_findings) >= 2
 
+
+
     # Check high missingness found
     null_dq = next((f for f in dq_findings if "incomplete_data" in f.columns), None)
     assert null_dq is not None
