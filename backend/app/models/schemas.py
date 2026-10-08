@@ -75,3 +75,35 @@ class InvestigateResponse(BaseModel):
     findings: list[InvestigationFinding] = Field(default_factory=list)
     tool_trace: list[ToolTraceItem] = Field(default_factory=list)
     charts: list[dict[str, Any]] = Field(default_factory=list)
+
+# Milestone 3: Questionless Dataset Discovery Schemas
+
+class DiscoveryFinding(BaseModel):
+    id: str = Field(description="Unique candidate identifier, e.g. corr_001")
+    type: str = Field(description="Discovery category: correlation, group_difference, category_numeric, time_pattern, interaction, data_quality")
+    title: str = Field(description="Human-readable discovery title")
+    columns: list[str] = Field(default_factory=list, description="Relevant dataset columns")
+    metric: dict[str, Any] = Field(default_factory=dict, description="Key calculated statistical metric")
+    evidence: dict[str, Any] = Field(default_factory=dict, description="Detailed numerical evidence computed by Python")
+    explanation: str = Field(description="Analytical explanation of the discovery")
+    caution: Optional[str] = Field(default=None, description="Cautionary context regarding causation or sample limitations")
+    importance: str = Field(default="medium", description="Importance rating: high, medium, low")
+    discovery_score: float = Field(default=0.0, description="Deterministic statistical score before LLM ranking")
+
+class DiscoverySummary(BaseModel):
+    rows: int
+    columns: int
+    candidates_examined: int
+    findings_returned: int
+    execution_time_ms: float = 0.0
+
+class DiscoveryRequest(BaseModel):
+    dataset_id: str
+    max_findings: int = Field(default=5, ge=1, le=20)
+
+class DiscoveryResponse(BaseModel):
+    dataset_id: str
+    filename: str
+    summary: DiscoverySummary
+    findings: list[DiscoveryFinding]
+
