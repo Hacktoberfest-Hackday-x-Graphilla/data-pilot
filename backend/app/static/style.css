@@ -724,3 +724,57 @@ body {
     font-size: 0.8rem;
     color: var(--text-muted);
 }
+
+/* Evidence-Based Discovery Charts */
+.discovery-chart-box {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 1.15rem 1rem 0.85rem;
+    margin-bottom: 1.25rem;
+    position: relative;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.65rem;
+    padding: 0 0.5rem;
+}
+
+.chart-header-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.chart-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    background: rgba(99, 102, 241, 0.2);
+    color: #c7d2fe;
+    border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.chart-svg-container {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+.chart-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 250px;
+}
+

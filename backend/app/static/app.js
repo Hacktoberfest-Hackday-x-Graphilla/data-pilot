@@ -347,8 +347,11 @@ document.addEventListener("DOMContentLoaded", () => {
             category: f.type,
             metric_data: f.metric,
             statistical_evidence: f.evidence,
+            visualization: f.visualization,
             discovery_score: f.discovery_score
         }, null, 2);
+
+        const chartHtml = renderDiscoveryChartSvg(f.visualization);
 
         card.innerHTML = `
             <div class="card-top">
@@ -363,6 +366,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="metric-callout">
                 ${metricHtml}
             </div>
+
+            ${chartHtml}
 
             <div class="evidence-section">
                 <!-- AI Explanation Box -->
@@ -434,5 +439,215 @@ document.addEventListener("DOMContentLoaded", () => {
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
+    }
+
+    function renderDiscoveryChartSvg(viz) {
+        if (!viz || !viz.data || !Array.isArray(viz.data) || viz.data.length === 0) {
+            return "";
+        }
+
+        const { chart_type, title, x_label, y_label, x_key, y_key, data } = viz;
+        const width = 560;
+        const height = 230;
+        const padLeft = 60;
+        const padRight = 30;
+        const padTop = 28;
+        const padBottom = 48;
+        const plotWidth = width - padLeft - padRight;
+        const plotHeight = height - padTop - padBottom;
+
+        let chartBody = "";
+
+        if (chart_type === "scatter") {
+            const validPoints = data
+                .map(d => ({ x: Number(d[x_key]), y: Number(d[y_key]) }))
+                .filter(d => !isNaN(d.x) && !isNaN(d.y));
+
+            if (validPoints.length === 0) return "";
+
+            let minX = Math.min(...validPoints.map(d => d.x));
+            let maxX = Math.max(...validPoints.map(d => d.x));
+            let minY = Math.min(...validPoints.map(d => d.y));
+            let maxY = Math.max(...validPoints.map(d => d.y));
+
+            if (minX === maxX) { minX -= 1; maxX += 1; }
+            if (minY === maxY) { minY -= 1; maxY += 1; }
+
+            const padX = (maxX - minX) * 0.06;
+            const padY = (maxY - minY) * 0.06;
+            minX -= padX; maxX += padX;
+            minY -= padY; maxY += padY;
+
+            let gridLines = "";
+            for (let i = 0; i <= 3; i++) {
+                const frac = i / 3;
+                const gy = padTop + plotHeight - (frac * plotHeight);
+                const valY = minY + frac * (maxY - minY);
+                gridLines += `<line x1="${padLeft}" y1="${gy}" x2="${padLeft + plotWidth}" y2="${gy}" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3,3" />`;
+                gridLines += `<text x="${padLeft - 8}" y="${gy + 4}" text-anchor="end" font-size="10" fill="#64748b" font-family="monospace">${valY >= 100 ? Math.round(valY) : valY.toFixed(1)}</text>`;
+
+                const gx = padLeft + (frac * plotWidth);
+                const valX = minX + frac * (maxX - minX);
+                gridLines += `<line x1="${gx}" y1="${padTop}" x2="${gx}" y2="${padTop + plotHeight}" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3,3" />`;
+                gridLines += `<text x="${gx}" y="${padTop + plotHeight + 16}" text-anchor="middle" font-size="10" fill="#64748b" font-family="monospace">${valX >= 100 ? Math.round(valX) : valX.toFixed(1)}</text>`;
+            }
+
+            let circles = "";
+            validPoints.forEach(p => {
+                const cx = padLeft + ((p.x - minX) / (maxX - minX)) * plotWidth;
+                const cy = padTop + plotHeight - ((p.y - minY) / (maxY - minY)) * plotHeight;
+                circles += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.2" fill="#38bdf8" opacity="0.8">
+                    <title>${escapeHtml(x_label)}: ${p.x}, ${escapeHtml(y_label)}: ${p.y}</title>
+                </circle>`;
+            });
+
+            chartBody = gridLines + circles;
+
+        } else if (chart_type === "bar") {
+            const items = data.map(d => ({
+                cat: String(d[x_key] ?? ""),
+                val: Number(d[y_key] ?? 0),
+            })).filter(d => !isNaN(d.val));
+
+            if (items.length === 0) return "";
+
+            let minY = Math.min(0, Math.min(...items.map(d => d.val)));
+            let maxY = Math.max(0, Math.max(...items.map(d => d.val)));
+            if (minY === maxY) { maxY += 1; }
+            maxY = maxY * 1.18; // Room for value labels
+
+            let gridLines = "";
+            for (let i = 0; i <= 3; i++) {
+                const frac = i / 3;
+                const gy = padTop + plotHeight - (frac * plotHeight);
+                const valY = minY + frac * (maxY - minY);
+                gridLines += `<line x1="${padLeft}" y1="${gy}" x2="${padLeft + plotWidth}" y2="${gy}" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3,3" />`;
+                gridLines += `<text x="${padLeft - 8}" y="${gy + 4}" text-anchor="end" font-size="10" fill="#64748b" font-family="monospace">${valY >= 100 ? Math.round(valY) : valY.toFixed(1)}</text>`;
+            }
+
+            const baseY = padTop + plotHeight - ((0 - minY) / (maxY - minY)) * plotHeight;
+            gridLines += `<line x1="${padLeft}" y1="${baseY}" x2="${padLeft + plotWidth}" y2="${baseY}" stroke="rgba(255,255,255,0.25)" stroke-width="1.2" />`;
+
+            const n = items.length;
+            const slotWidth = plotWidth / n;
+            const barWidth = Math.min(46, Math.max(14, slotWidth * 0.65));
+
+            let bars = "";
+            items.forEach((item, i) => {
+                const barX = padLeft + (i * slotWidth) + ((slotWidth - barWidth) / 2);
+                const valY = padTop + plotHeight - ((item.val - minY) / (maxY - minY)) * plotHeight;
+                const barY = Math.min(baseY, valY);
+                const barH = Math.max(2, Math.abs(baseY - valY));
+
+                bars += `<rect x="${barX.toFixed(1)}" y="${barY.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barH.toFixed(1)}" rx="3" fill="url(#barGradient)" opacity="0.9">
+                    <title>${escapeHtml(item.cat)}: ${item.val}</title>
+                </rect>`;
+
+                const labelY = item.val >= 0 ? barY - 5 : barY + barH + 12;
+                bars += `<text x="${(barX + barWidth / 2).toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="600" fill="#cbd5e1" font-family="monospace">${item.val}</text>`;
+
+                const catLabel = item.cat.length > 9 ? item.cat.slice(0, 8) + "…" : item.cat;
+                bars += `<text x="${(barX + barWidth / 2).toFixed(1)}" y="${(padTop + plotHeight + 17).toFixed(1)}" text-anchor="middle" font-size="10" fill="#94a3b8">${escapeHtml(catLabel)}</text>`;
+            });
+
+            chartBody = gridLines + bars;
+
+        } else if (chart_type === "line") {
+            const items = data.map(d => ({
+                label: String(d[x_key] ?? ""),
+                val: Number(d[y_key] ?? 0),
+            })).filter(d => !isNaN(d.val));
+
+            if (items.length === 0) return "";
+
+            let minY = Math.min(...items.map(d => d.val));
+            let maxY = Math.max(...items.map(d => d.val));
+            if (minY === maxY) { minY -= 1; maxY += 1; }
+            const padY = (maxY - minY) * 0.12;
+            minY -= padY; maxY += padY;
+
+            let gridLines = "";
+            for (let i = 0; i <= 3; i++) {
+                const frac = i / 3;
+                const gy = padTop + plotHeight - (frac * plotHeight);
+                const valY = minY + frac * (maxY - minY);
+                gridLines += `<line x1="${padLeft}" y1="${gy}" x2="${padLeft + plotWidth}" y2="${gy}" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3,3" />`;
+                gridLines += `<text x="${padLeft - 8}" y="${gy + 4}" text-anchor="end" font-size="10" fill="#64748b" font-family="monospace">${valY >= 100 ? Math.round(valY) : valY.toFixed(1)}</text>`;
+            }
+
+            const n = items.length;
+            const coords = items.map((item, i) => {
+                const cx = padLeft + (n === 1 ? plotWidth / 2 : (i / (n - 1)) * plotWidth);
+                const cy = padTop + plotHeight - ((item.val - minY) / (maxY - minY)) * plotHeight;
+                return { x: cx, y: cy, label: item.label, val: item.val };
+            });
+
+            const first = coords[0];
+            const last = coords[coords.length - 1];
+            const bottomY = padTop + plotHeight;
+            let areaD = `M ${first.x.toFixed(1)} ${bottomY} L ${first.x.toFixed(1)} ${first.y.toFixed(1)}`;
+            for (let i = 1; i < coords.length; i++) {
+                areaD += ` L ${coords[i].x.toFixed(1)} ${coords[i].y.toFixed(1)}`;
+            }
+            areaD += ` L ${last.x.toFixed(1)} ${bottomY} Z`;
+
+            let lineD = `M ${first.x.toFixed(1)} ${first.y.toFixed(1)}`;
+            for (let i = 1; i < coords.length; i++) {
+                lineD += ` L ${coords[i].x.toFixed(1)} ${coords[i].y.toFixed(1)}`;
+            }
+
+            let lineElements = `
+                <path d="${areaD}" fill="url(#lineAreaGrad)" opacity="0.3" />
+                <path d="${lineD}" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            `;
+
+            coords.forEach(pt => {
+                lineElements += `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="3.8" fill="#6366f1" stroke="#ffffff" stroke-width="1.8">
+                    <title>${escapeHtml(pt.label)}: ${pt.val}</title>
+                </circle>`;
+
+                if (coords.length <= 12) {
+                    lineElements += `<text x="${pt.x.toFixed(1)}" y="${(pt.y - 7).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="#cbd5e1" font-family="monospace">${pt.val}</text>`;
+                    const segLabel = pt.label.length > 7 ? pt.label.slice(0, 6) + "…" : pt.label;
+                    lineElements += `<text x="${pt.x.toFixed(1)}" y="${(padTop + plotHeight + 17).toFixed(1)}" text-anchor="middle" font-size="10" fill="#94a3b8">${escapeHtml(segLabel)}</text>`;
+                }
+            });
+
+            chartBody = gridLines + lineElements;
+        }
+
+        return `
+            <div class="discovery-chart-box">
+                <div class="chart-header">
+                    <div class="chart-header-title">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                        <span>${escapeHtml(title)}</span>
+                    </div>
+                    <span class="chart-badge">${chart_type.toUpperCase()}</span>
+                </div>
+                <div class="chart-svg-container">
+                    <svg class="chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                            <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#38bdf8" />
+                                <stop offset="100%" stop-color="#4f46e5" />
+                            </linearGradient>
+                            <linearGradient id="lineAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#818cf8" stop-opacity="0.5" />
+                                <stop offset="100%" stop-color="#6366f1" stop-opacity="0.0" />
+                            </linearGradient>
+                        </defs>
+                        ${chartBody}
+                        <!-- Axis Labels -->
+                        <text x="${(padLeft + plotWidth / 2).toFixed(1)}" y="${height - 8}" text-anchor="middle" font-size="10.5" font-weight="600" fill="#64748b">${escapeHtml(x_label)}</text>
+                        <text x="14" y="${(padTop + plotHeight / 2).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="600" fill="#64748b" transform="rotate(-90 14 ${(padTop + plotHeight / 2).toFixed(1)})">${escapeHtml(y_label)}</text>
+                    </svg>
+                </div>
+            </div>
+        `;
     }
 });
