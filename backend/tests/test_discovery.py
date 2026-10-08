@@ -47,19 +47,12 @@ def discovery_df():
     n = 60
 
     ages = np.linspace(20, 60, n)
-    # Strong correlation with age (r ~ 0.95)
-    purchases = ages * 5.0 + np.random.normal(0, 5, n)
+    # Strong correlation with age (r ~ 0.98)
+    purchases = ages * 5.0 + np.random.normal(0, 3, n)
 
-    # Regions: East has higher purchases
-    regions = []
-    for i in range(n):
-        if i < 20:
-            regions.append("East")
-            purchases[i] += 100.0  # +100 for East
-        elif i < 40:
-            regions.append("West")
-        else:
-            regions.append("North")
+    # Regions: East has higher spending_score (+51.5% like user example)
+    regions = ["East"] * 20 + ["West"] * 20 + ["North"] * 20
+    spending_score = [184.2 if r == "East" else 90.3 for r in regions]
 
     # Service type and time_of_day for interactions
     service_types = ["Standard", "Express"] * 30
@@ -93,6 +86,7 @@ def discovery_df():
         "customer_age": ages,
         "purchase_amount": purchases,
         "region": regions,
+        "spending_score": spending_score,
         "service_type": service_types,
         "time_of_day": time_of_day,
         "waiting_time": wait_time,
@@ -116,9 +110,9 @@ def test_correlation_discovery(discovery_df):
     # Check that age <-> purchase_amount correlation is discovered
     age_purch_corr = next((f for f in corr_findings if "customer_age" in f.columns and "purchase_amount" in f.columns), None)
     assert age_purch_corr is not None
-    assert age_purch_corr.metric["correlation"] > 0.5
+    assert age_purch_corr.metric["correlation"] > 0.7
     assert age_purch_corr.metric["direction"] == "Positive"
-    assert age_purch_corr.metric["strength"] in ("Strong", "Moderate")
+    assert age_purch_corr.metric["strength"] == "Strong"
     assert "sample_size" in age_purch_corr.metric
     assert "p_value" in age_purch_corr.metric
     assert "causes" not in age_purch_corr.explanation.lower()
@@ -134,10 +128,12 @@ def test_group_difference_discovery(discovery_df):
 
     grp_findings = [f for f in response.findings if f.type == "group_difference"]
     assert len(grp_findings) >= 1
-    # Check East group difference in purchase_amount
+    # Check East group difference
     east_finding = next((f for f in grp_findings if f.metric.get("group") == "East"), None)
     assert east_finding is not None
-    assert east_finding.metric["percentage_difference"] > 0
+    assert east_finding.metric["percentage_difference"] > 20.0
+    assert east_finding.metric["group_size"] == 20
+
     assert east_finding.metric["group_size"] == 20
 
 
