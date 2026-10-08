@@ -7,3 +7,12 @@
 dev_mlh_mcp_server.exe
 *.tmp
 update.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+backend/.venv/
+*.egg-info/
+.pytest_cache/
