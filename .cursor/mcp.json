@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "devrelay": {
+      "command": "${workspaceFolder}/dev_mlh_mcp_server.exe",
+      "args": [
+        "--stdio"
+      ]
+    }
+  }
+}
