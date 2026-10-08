@@ -240,3 +240,125 @@ def test_tool_execution_error_handled_gracefully(dataset_id):
         assert data["tool_trace"][0]["success"] is False
         assert "Execution error in group_and_compare" in data["tool_trace"][0]["summary"]
 
+def test_gemini_provider_instantiation():
+    """Provider Test 1: Gemini provider can be instantiated and configured."""
+    from app.services.providers import GeminiProvider
+    prov = GeminiProvider(api_key="test_key", model="gemini-3-flash-preview")
+    assert prov.provider_name == "gemini"
+    assert prov.api_key == "test_key"
+    assert prov.model_name == "gemini-3-flash-preview"
+
+def test_gemma_provider_instantiation():
+    """Provider Test 2: Gemma provider can be instantiated and configured."""
+    from app.services.providers import GemmaProvider
+    prov = GemmaProvider(api_key="gemma_key", model="gemma2-9b-it", base_url="https://api.groq.com/openai/v1")
+    assert prov.provider_name == "gemma"
+    assert prov.api_key == "gemma_key"
+    assert prov.model_name == "gemma2-9b-it"
+    assert prov.base_url == "https://api.groq.com/openai/v1"
+
+def test_openai_compatible_tool_schema():
+    """Provider Test 3: OpenAI-compatible tool schema is generated correctly from existing declarations."""
+    from app.tools.registry import get_openai_tools, TOOL_MAP
+    tools = get_openai_tools()
+    assert len(tools) == len(TOOL_MAP)
+    for t in tools:
+        assert t["type"] == "function"
+        assert "function" in t
+        fn = t["function"]
+        assert fn["name"] in TOOL_MAP
+        assert "parameters" in fn
+        assert fn["parameters"]["type"] == "object"
+
+def test_gemma_tool_call_parsing():
+    """Provider Test 4: Gemma tool call can be parsed from mock response."""
+    from app.services.providers import GemmaProvider
+
+    prov = GemmaProvider(api_key="mock", model="gemma2-9b-it")
+    mock_client = MagicMock()
+    prov._client = mock_client
+
+    # Mock tool call in OpenAI format
+    mock_tc = MagicMock()
+    mock_tc.id = "call_abc123"
+    mock_tc.function.name = "calculate_statistics"
+    mock_tc.function.arguments = '{"columns": ["sales"]}'
+
+    mock_msg = MagicMock()
+    mock_msg.content = None
+    mock_msg.tool_calls = [mock_tc]
+
+    mock_choice = MagicMock()
+    mock_choice.message = mock_msg
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+
+    mock_client.chat.completions.create.return_value = mock_response
+
+    session = prov.create_chat_session(system_instruction="You are DataPilot")
+    res = session.send_initial_message("What is average sales?")
+
+    assert len(res.tool_calls) == 1
+    assert res.tool_calls[0].call_id == "call_abc123"
+    assert res.tool_calls[0].name == "calculate_statistics"
+    assert res.tool_calls[0].arguments == {"columns": ["sales"]}
+
+def test_gemma_tool_result_sent_back():
+    """Provider Test 5: Tool results can be sent back to the Gemma provider session."""
+    from app.services.providers import GemmaProvider
+    from app.services.providers.base import ToolResultItem
+
+    prov = GemmaProvider(api_key="mock", model="gemma2-9b-it")
+    mock_client = MagicMock()
+    prov._client = mock_client
+
+    mock_final_msg = MagicMock()
+    mock_final_msg.content = "Average sales is 200.0."
+    mock_final_msg.tool_calls = None
+
+    mock_choice = MagicMock()
+    mock_choice.message = mock_final_msg
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+
+    mock_client.chat.completions.create.return_value = mock_response
+
+    session = prov.create_chat_session(system_instruction="You are DataPilot")
+    tool_results = [
+        ToolResultItem(
+            call_id="call_abc123",
+            name="calculate_statistics",
+            result={"numeric_stats": {"sales": {"mean": 200.0}}},
+            is_error=False,
+        )
+    ]
+    res = session.send_tool_results(tool_results)
+
+    assert res.text == "Average sales is 200.0."
+    assert len(res.tool_calls) == 0
+    # Verify that tool result was appended to messages history
+    tool_msgs = [m for m in session.messages if m.get("role") == "tool"]
+    assert len(tool_msgs) == 1
+    assert tool_msgs[0]["tool_call_id"] == "call_abc123"
+    assert "200.0" in tool_msgs[0]["content"]
+
+def test_ai_agent_provider_selection():
+    """Provider Test 6: AIAgentService selects provider based on AI_PROVIDER setting or argument."""
+    # 1. Default selects gemini
+    with patch("app.services.ai_agent.settings.AI_PROVIDER", "gemini"):
+        agent_gemini = AIAgentService()
+        assert agent_gemini.provider.provider_name == "gemini"
+
+    # 2. Setting AI_PROVIDER to gemma selects gemma
+    with patch("app.services.ai_agent.settings.AI_PROVIDER", "gemma"):
+        agent_gemma = AIAgentService()
+        assert agent_gemma.provider.provider_name == "gemma"
+
+    # 3. Explicit provider_name override
+    agent_explicit_gemma = AIAgentService(provider_name="gemma")
+    assert agent_explicit_gemma.provider.provider_name == "gemma"
+
+    agent_explicit_gemini = AIAgentService(provider_name="gemini")
+    assert agent_explicit_gemini.provider.provider_name == "gemini"
+
+
