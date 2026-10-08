@@ -586,7 +586,8 @@ class DiscoveryEngine:
             null_count = int(df[col].isna().sum())
             null_pct = round((null_count / total_rows) * 100.0, 1)
             if null_pct >= 25.0:
-                score = 50.0 + min(25.0, null_pct * 0.5)
+                score = 60.0 + min(20.0, null_pct * 0.5)
+
                 candidates.append({
                     "id": f"dq_null_{cand_idx:03d}",
                     "type": "data_quality",

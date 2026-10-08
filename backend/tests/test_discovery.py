@@ -76,9 +76,10 @@ def discovery_df():
     # Data quality items
     constant_col = ["FIXED_VALUE"] * n
     duplicate_col = list(ages)
-    missing_col = [np.nan if i < 25 else 10.0 for i in range(n)]  # 41.6% missing
+    missing_col = [np.nan if i < 25 else float(i) for i in range(n)]  # 41.6% missing
     outlier_col = list(purchases)
     outlier_col[0] = 50000.0  # Massive extreme outlier
+
 
     # Add a tiny group category to test filtering
     dept = ["Engineering"] * 28 + ["Sales"] * 29 + ["TinyGrp"] * 3
@@ -162,14 +163,13 @@ def test_data_quality_discovery(discovery_df):
     response = engine.discover(summary.dataset_id, max_findings=15)
 
     dq_findings = [f for f in response.findings if f.type == "data_quality"]
-    print("DQ FINDINGS IN TEST:", [(f.id, f.title, f.columns, f.metric) for f in dq_findings])
     assert len(dq_findings) >= 2
-
 
     # Check high missingness found
     null_dq = next((f for f in dq_findings if "incomplete_data" in f.columns), None)
     assert null_dq is not None
     assert null_dq.metric["missing_percentage"] > 25.0
+
 
     # Check constant column found
     const_dq = next((f for f in dq_findings if "const_feat" in f.columns), None)
