@@ -157,10 +157,11 @@ class DiscoveryEngine:
                 else:
                     # Constant or zero-variance numeric column
                     pass
-                # Numeric with low cardinality can also serve as categorical groupings
-                if 2 <= series.nunique(dropna=True) <= 10:
+                # Low-cardinality integer columns can also serve as categorical groupings (e.g. ratings 1-5, binary flags)
+                if pd.api.types.is_integer_dtype(series) and 2 <= series.nunique(dropna=True) <= 8:
                     categorical_cols.append(col)
                 continue
+
 
             # Check Categorical
             if not pd.api.types.is_numeric_dtype(series):
