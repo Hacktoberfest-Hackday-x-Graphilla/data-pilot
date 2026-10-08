@@ -42,3 +42,36 @@ class ToolExecutionResponse(BaseModel):
     data: Optional[Any] = None
     error: Optional[str] = None
     execution_time_ms: float
+
+# Milestone 2: AI Agent Schemas
+
+class ToolTraceItem(BaseModel):
+    tool_name: str
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    success: bool
+    summary: Optional[str] = None
+    data: Optional[Any] = None
+
+class ChatRequest(BaseModel):
+    question: str = Field(..., min_length=1, description="Question about the dataset")
+
+class ChatResponse(BaseModel):
+    dataset_id: str
+    question: str
+    answer: str
+    tool_trace: list[ToolTraceItem] = Field(default_factory=list)
+    suggested_charts: list[dict[str, Any]] = Field(default_factory=list)
+
+class InvestigationFinding(BaseModel):
+    category: str = Field(description="Category of finding: distribution, correlation, anomaly, comparison, trend")
+    title: str
+    description: str
+    importance: str = Field(default="medium", description="Importance level: high, medium, low")
+    evidence: dict[str, Any] = Field(default_factory=dict)
+
+class InvestigateResponse(BaseModel):
+    dataset_id: str
+    summary: str
+    findings: list[InvestigationFinding] = Field(default_factory=list)
+    tool_trace: list[ToolTraceItem] = Field(default_factory=list)
+    charts: list[dict[str, Any]] = Field(default_factory=list)

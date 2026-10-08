@@ -4,6 +4,11 @@ from .schemas import (
     ProfileReport,
     ToolExecutionRequest,
     ToolExecutionResponse,
+    ToolTraceItem,
+    ChatRequest,
+    ChatResponse,
+    InvestigationFinding,
+    InvestigateResponse,
 )
 
 __all__ = [
@@ -12,4 +17,9 @@ __all__ = [
     "ProfileReport",
     "ToolExecutionRequest",
     "ToolExecutionResponse",
+    "ToolTraceItem",
+    "ChatRequest",
+    "ChatResponse",
+    "InvestigationFinding",
+    "InvestigateResponse",
 ]
