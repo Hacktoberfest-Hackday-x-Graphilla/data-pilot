@@ -40,13 +40,21 @@ def test_live_discovery():
     print('Summary:', json.dumps(disc_res['summary'], indent=2))
     print(f'Received {len(disc_res["findings"])} findings:')
     for i, f in enumerate(disc_res['findings'], 1):
-        print(f"\n{i}. [{f['type'].upper()}] {f['title']}")
+        title = f['title'].encode('ascii', errors='replace').decode('ascii')
+        expl = f['explanation'].encode('ascii', errors='replace').decode('ascii')
+        print(f"\n{i}. [{f['type'].upper()}] {title}")
         print(f"   Columns: {f['columns']}")
         print(f"   Metric: {f['metric']}")
-        print(f"   Explanation: {f['explanation']}")
+        print(f"   Explanation: {expl}")
         if f.get('caution'):
-            print(f"   Caution: {f['caution']}")
-        print(f"   Evidence keys: {list(f['evidence'].keys())}")
+            caut = f['caution'].encode('ascii', errors='replace').decode('ascii')
+            print(f"   Caution: {caut}")
+        
+        viz = f.get('visualization')
+        if viz:
+            print(f"   [VIZ] Chart Type: {viz['chart_type']}, Title: '{viz['title']}', x_key: {viz['x_key']}, y_key: {viz['y_key']}, Data Points: {len(viz['data'])}")
+        else:
+            print(f"   [VIZ] None (appropriate for {f['type']})")
 
     assert disc_res['dataset_id'] == dataset_id
     assert len(disc_res['findings']) > 0

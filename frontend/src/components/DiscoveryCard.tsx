@@ -11,7 +11,7 @@ import {
   Check,
 } from 'lucide-react';
 import type { DiscoveryFinding } from '../api/types';
-import { VisualCallout } from './VisualCallout';
+import { DiscoveryChart } from './DiscoveryChart';
 
 interface DiscoveryCardProps {
   finding: DiscoveryFinding;
@@ -322,8 +322,8 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
         )}
       </div>
 
-      {/* Lightweight Micro-Visual */}
-      <VisualCallout finding={finding} />
+      {/* Evidence-Based Discovery Chart */}
+      <DiscoveryChart spec={finding.visualization} />
 
       {/* Trust Separation: AI Explanation vs Calculated Evidence */}
       <div className="space-y-2 my-2.5 text-xs">
