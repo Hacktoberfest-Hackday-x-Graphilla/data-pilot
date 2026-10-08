@@ -1,9 +1,14 @@
-city,temperature,humidity,rainfall,air_quality_index
-New York,72.5,65,0.2,45
-London,60.1,80,1.5,35
-Tokyo,78.3,70,0.8,50
-Paris,68.4,75,0.4,40
-Sydney,75.0,60,0.0,30
-Mumbai,88.2,85,5.2,110
-Cairo,95.0,35,0.0,85
-Berlin,64.2,68,0.3,38
+region,sales,units,product_category,customer_rating,discount,month
+North,1200.50,45,Electronics,4.6,0.05,January
+South,850.00,30,Furniture,4.1,0.10,January
+East,2300.75,80,Electronics,4.8,0.15,January
+West,1450.25,50,Apparel,3.9,0.00,January
+North,1100.00,40,Electronics,4.5,0.05,February
+South,920.50,32,Furniture,4.2,0.10,February
+East,2550.00,88,Electronics,4.9,0.20,February
+West,1380.00,48,Apparel,4.0,0.00,February
+North,1350.20,52,Electronics,4.7,0.05,March
+South,780.00,28,Furniture,3.8,0.10,March
+East,2700.00,95,Electronics,4.9,0.15,March
+West,1520.00,55,Apparel,4.1,0.05,March
+North,8900.00,210,Electronics,5.0,0.25,March
