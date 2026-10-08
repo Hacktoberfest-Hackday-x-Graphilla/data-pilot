@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field
 
 class ColumnProfile(BaseModel):
@@ -78,6 +78,15 @@ class InvestigateResponse(BaseModel):
 
 # Milestone 3: Questionless Dataset Discovery Schemas
 
+class VisualizationSpec(BaseModel):
+    chart_type: Literal["scatter", "bar", "line"]
+    title: str
+    x_label: str
+    y_label: str
+    x_key: str
+    y_key: str
+    data: list[dict[str, Any]] = Field(default_factory=list, description="Bounded, verified data points for charting")
+
 class DiscoveryFinding(BaseModel):
     id: str = Field(description="Unique candidate identifier, e.g. corr_001")
     type: str = Field(description="Discovery category: correlation, group_difference, category_numeric, time_pattern, interaction, data_quality")
@@ -85,6 +94,7 @@ class DiscoveryFinding(BaseModel):
     columns: list[str] = Field(default_factory=list, description="Relevant dataset columns")
     metric: dict[str, Any] = Field(default_factory=dict, description="Key calculated statistical metric")
     evidence: dict[str, Any] = Field(default_factory=dict, description="Detailed numerical evidence computed by Python")
+    visualization: Optional[VisualizationSpec] = Field(default=None, description="Deterministic visualization specification")
     explanation: str = Field(description="Analytical explanation of the discovery")
     caution: Optional[str] = Field(default=None, description="Cautionary context regarding causation or sample limitations")
     importance: str = Field(default="medium", description="Importance rating: high, medium, low")

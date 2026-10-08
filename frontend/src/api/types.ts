@@ -42,6 +42,16 @@ export interface DatasetSummary {
   created_at: string;
 }
 
+export interface VisualizationSpec {
+  chart_type: 'scatter' | 'bar' | 'line';
+  title: string;
+  x_label: string;
+  y_label: string;
+  x_key: string;
+  y_key: string;
+  data: Record<string, any>[];
+}
+
 export interface DiscoveryFinding {
   id: string;
   type: DiscoveryCategory;
@@ -49,6 +59,7 @@ export interface DiscoveryFinding {
   columns: string[];
   metric: Record<string, any>;
   evidence: Record<string, any>;
+  visualization?: VisualizationSpec | null;
   explanation: string;
   caution?: string | null;
   importance: ImportanceLevel;

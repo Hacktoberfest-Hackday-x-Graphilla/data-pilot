@@ -118,7 +118,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-50 text-zinc-900 font-sans">
+    <div className="min-h-screen flex flex-col bg-zinc-50 text-zinc-900 font-sans selection:bg-zinc-200">
       <Header
         health={health}
         healthLoading={healthLoading}
@@ -126,7 +126,7 @@ export function App() {
         onReset={handleReset}
       />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Step: IDLE (Upload zone) */}
         {step === 'idle' && (
           <UploadZone
@@ -148,7 +148,7 @@ export function App() {
 
         {/* Step: READY (Dataset Loaded, CTA to discover) */}
         {step === 'ready' && dataset && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <DatasetOverview
               dataset={dataset}
               profile={profile}
@@ -167,7 +167,7 @@ export function App() {
 
         {/* Step: DISCOVERING (Staged progress) */}
         {step === 'discovering' && dataset && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <DatasetOverview
               dataset={dataset}
               profile={profile}
@@ -179,18 +179,9 @@ export function App() {
           </div>
         )}
 
-        {/* Step: COMPLETE (Discovery report & cards) */}
+        {/* Step: COMPLETE (Discovery report & cards as the HERO) */}
         {step === 'complete' && discoveryReport && (
-          <div className="space-y-6">
-            {dataset && (
-              <DatasetOverview
-                dataset={dataset}
-                profile={profile}
-                isLoadingProfile={false}
-                onRemoveDataset={handleReset}
-              />
-            )}
-
+          <div className="space-y-4">
             <DiscoveryReportView
               report={discoveryReport}
               onRunAgain={() => handleDiscover(maxFindings)}
@@ -201,7 +192,7 @@ export function App() {
 
         {/* Step: ERROR */}
         {step === 'error' && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {dataset && (
               <DatasetOverview
                 dataset={dataset}
@@ -224,11 +215,11 @@ export function App() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-zinc-200 py-6 text-center text-xs text-zinc-400 bg-white">
-        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>DataPilot — Questionless AI Dataset Discovery Engine</span>
+      <footer className="w-full border-t border-zinc-200 py-4 text-center text-xs text-zinc-400 bg-white">
+        <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-1 text-[11px]">
+          <span>DataPilot — Questionless AI Dataset Discovery</span>
           <span className="font-mono text-zinc-400">
-            Statistical Evidence via Python • Explanations via LLM
+            Calculated by DataPilot • Interpreted by AI
           </span>
         </div>
       </footer>
