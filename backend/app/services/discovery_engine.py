@@ -746,8 +746,9 @@ class DiscoveryEngine:
         ranked: list[dict[str, Any]] = []
         seen_ids: set[str] = set()
 
-        # Pass 1: Ensure top 2 from each category are promoted
-        for pass_round in range(2):
+        # Pass 1: Ensure top 3 from each category are promoted
+        for pass_round in range(3):
+
             for cat_type in priority_order:
                 cat_list = by_type.get(cat_type, [])
                 if len(cat_list) > pass_round:
