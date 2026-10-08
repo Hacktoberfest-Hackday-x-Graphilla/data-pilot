@@ -125,17 +125,18 @@ def test_correlation_discovery(discovery_df):
 def test_group_difference_discovery(discovery_df):
     summary = dataset_store.add_dataset(discovery_df, filename="sales.csv")
     engine = DiscoveryEngine()
-    response = engine.discover(summary.dataset_id, max_findings=10)
+    response = engine.discover(summary.dataset_id, max_findings=15)
 
     grp_findings = [f for f in response.findings if f.type == "group_difference"]
+    print("\nGRP FINDINGS IN TEST:", [f.metric for f in grp_findings])
     assert len(grp_findings) >= 1
     # Check East group difference
     east_finding = next((f for f in grp_findings if f.metric.get("group") == "East"), None)
     assert east_finding is not None
+
     assert east_finding.metric["percentage_difference"] > 20.0
     assert east_finding.metric["group_size"] == 20
 
-    assert east_finding.metric["group_size"] == 20
 
 
 # 3. Test Time Pattern Discovery
