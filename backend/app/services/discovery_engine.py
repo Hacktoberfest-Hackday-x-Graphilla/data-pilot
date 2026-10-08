@@ -259,7 +259,7 @@ class DiscoveryEngine:
         """Identifies categories whose subgroups substantially deviate from the overall average."""
         candidates = []
         cand_idx = 1
-        min_group_size = max(3, int(len(df) * 0.02))  # At least 3 rows or 2% of data
+        min_group_size = max(4, int(len(df) * 0.05)) if len(df) >= 20 else 2
 
         for cat_col in categorical_cols:
             for num_col in numeric_cols:
@@ -288,7 +288,8 @@ class DiscoveryEngine:
 
                     if abs(pct_diff) >= 20.0:  # Meaningful divergence >= 20%
                         direction_word = "higher" if pct_diff > 0 else "lower"
-                        score = min(40.0, abs(pct_diff) * 0.5) + min(20.0, math.sqrt(grp_count) * 2.0)
+                        score = min(35.0, abs(pct_diff) * 0.4) + min(25.0, math.sqrt(grp_count) * 3.0)
+
 
                         candidates.append({
                             "id": f"grp_{cand_idx:03d}",

@@ -50,9 +50,10 @@ def discovery_df():
     # Strong correlation with age (r ~ 0.98)
     purchases = ages * 5.0 + np.random.normal(0, 3, n)
 
-    # Regions: East has higher spending_score (+51.5% like user example)
+    # Regions: East has higher spending_score (+82.9% like user example)
     regions = ["East"] * 20 + ["West"] * 20 + ["North"] * 20
-    spending_score = [184.2 if r == "East" else 90.3 for r in regions]
+    spending_score = [250.0 if r == "East" else 80.0 for r in regions]
+
 
     # Service type and time_of_day for interactions
     service_types = ["Standard", "Express"] * 30
