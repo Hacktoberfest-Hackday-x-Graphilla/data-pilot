@@ -16,7 +16,7 @@ def test_live_discovery():
     ).encode('utf-8') + csv_bytes + f'\r\n--{boundary}--\r\n'.encode('utf-8')
 
     req = urllib.request.Request(
-        'http://localhost:8000/api/v1/upload',
+        'http://localhost:8000/api/v1/datasets/upload',
         data=body,
         headers={'Content-Type': f'multipart/form-data; boundary={boundary}'}
     )
