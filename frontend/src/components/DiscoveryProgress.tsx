@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, Loader2, Circle } from 'lucide-react';
+import { Check, Circle } from 'lucide-react';
 
 interface Stage {
   id: string;
@@ -9,39 +9,39 @@ interface Stage {
 
 const DISCOVERY_STAGES: Stage[] = [
   {
-    id: 'profile',
-    label: 'Profiling dataset structure & column types',
-    detail: 'Classifying numerical, categorical, and temporal variables',
+    id: 'structure',
+    label: 'Dataset structure',
+    detail: 'Classifying numeric, categorical, and temporal variables',
   },
   {
     id: 'correlations',
-    label: 'Testing numerical correlations',
-    detail: 'Evaluating Pearson coefficients and significance across variable pairs',
+    label: 'Numerical relationships',
+    detail: 'Evaluating Pearson coefficients and significance across feature pairs',
   },
   {
     id: 'groups',
-    label: 'Comparing categorical group distributions',
-    detail: 'Detecting subgroups that diverge significantly from population averages',
+    label: 'Group differences',
+    detail: 'Testing category subgroup deviations from population baseline',
   },
   {
     id: 'time',
-    label: 'Checking cyclical time patterns',
-    detail: 'Analyzing variations across hours, weekdays, and months',
+    label: 'Time patterns',
+    detail: 'Scanning cyclical distributions across temporal units',
   },
   {
     id: 'interactions',
-    label: 'Scanning for non-additive interactions',
-    detail: 'Identifying factor pairs with combinatorial effects on outcomes',
+    label: 'Interactions',
+    detail: 'Detecting non-additive combinatorial effects across factors',
   },
   {
     id: 'quality',
-    label: 'Auditing data quality & anomalies',
-    detail: 'Screening for missingness, constant columns, and extreme outliers',
+    label: 'Data quality',
+    detail: 'Auditing missingness, constant columns, and statistical anomalies',
   },
   {
-    id: 'reasoning',
-    label: 'Ranking findings & generating AI explanations',
-    detail: 'Synthesizing evidence through DataPilot reasoning layer',
+    id: 'synthesis',
+    label: 'AI synthesis',
+    detail: 'Ranking findings and synthesizing analytical explanations',
   },
 ];
 
@@ -49,7 +49,6 @@ export const DiscoveryProgress: React.FC = () => {
   const [currentStageIndex, setCurrentStageIndex] = useState(0);
 
   useEffect(() => {
-    // Advance progress stages at realistic intervals to mirror the backend execution
     const interval = setInterval(() => {
       setCurrentStageIndex((prev) => {
         if (prev < DISCOVERY_STAGES.length - 1) {
@@ -57,43 +56,27 @@ export const DiscoveryProgress: React.FC = () => {
         }
         return prev;
       });
-    }, 700);
+    }, 650);
 
     return () => clearInterval(interval);
   }, []);
 
-  const progressPct = Math.round(
-    ((currentStageIndex + 1) / DISCOVERY_STAGES.length) * 100
-  );
-
   return (
-    <div className="w-full max-w-xl mx-auto rounded-xl border border-zinc-200 bg-white p-6 sm:p-8 shadow-xs">
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center space-x-2 text-indigo-600 font-semibold text-base mb-1">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Investigating dataset...</span>
+    <div className="w-full max-w-lg mx-auto rounded-xl border border-zinc-200 bg-white p-6 sm:p-7 shadow-2xs">
+      <div className="text-center pb-5 mb-5 border-b border-zinc-100">
+        <div className="inline-block text-[11px] font-mono uppercase tracking-widest text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded mb-2">
+          Investigation in Progress
         </div>
-        <p className="text-xs text-zinc-500">
-          DataPilot is running automated statistical discovery algorithms
+        <h3 className="text-base sm:text-lg font-semibold text-zinc-950 tracking-tight">
+          DataPilot is investigating
+        </h3>
+        <p className="text-xs text-zinc-500 mt-0.5">
+          Evaluating statistical relationships across all variables
         </p>
       </div>
 
-      {/* Progress Bar */}
-      <div className="mb-6">
-        <div className="flex justify-between text-xs text-zinc-500 mb-1.5 font-mono">
-          <span>Stage {currentStageIndex + 1} of {DISCOVERY_STAGES.length}</span>
-          <span>{progressPct}%</span>
-        </div>
-        <div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-indigo-600 transition-all duration-500 ease-out"
-            style={{ width: `${progressPct}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Staged Checklist */}
-      <div className="space-y-3">
+      {/* Stage Checklist */}
+      <div className="space-y-2.5 max-w-sm mx-auto">
         {DISCOVERY_STAGES.map((stage, idx) => {
           const isDone = idx < currentStageIndex;
           const isCurrent = idx === currentStageIndex;
@@ -102,36 +85,48 @@ export const DiscoveryProgress: React.FC = () => {
           return (
             <div
               key={stage.id}
-              className={`flex items-start space-x-3 text-xs transition-opacity duration-300 ${
-                isPending ? 'opacity-40' : 'opacity-100'
+              className={`flex items-center space-x-3 text-xs transition-opacity duration-200 ${
+                isPending ? 'opacity-35' : 'opacity-100'
               }`}
             >
-              <div className="mt-0.5 shrink-0">
+              <div className="shrink-0">
                 {isDone ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
+                    <Check className="h-2.5 w-2.5 stroke-[2.5]" />
+                  </span>
                 ) : isCurrent ? (
-                  <Loader2 className="h-4 w-4 text-indigo-600 animate-spin" />
+                  <span className="flex h-4.5 w-4.5 items-center justify-center">
+                    <span className="h-2 w-2 rounded-full bg-indigo-600 animate-ping" />
+                  </span>
                 ) : (
-                  <Circle className="h-4 w-4 text-zinc-300" />
+                  <span className="flex h-4.5 w-4.5 items-center justify-center text-zinc-300">
+                    <Circle className="h-2 w-2" />
+                  </span>
                 )}
               </div>
 
-              <div className="flex-1 min-w-0">
-                <p
+              <div className="flex-1 min-w-0 flex items-baseline justify-between gap-2">
+                <span
                   className={`font-medium ${
                     isDone
                       ? 'text-zinc-700'
                       : isCurrent
-                      ? 'text-indigo-950 font-semibold'
+                      ? 'text-zinc-950 font-semibold'
                       : 'text-zinc-400'
                   }`}
                 >
                   {stage.label}
-                </p>
+                </span>
+
                 {isCurrent && (
-                  <p className="text-[11px] text-zinc-500 mt-0.5 animate-pulse">
-                    {stage.detail}
-                  </p>
+                  <span className="text-[10px] text-indigo-600 font-mono animate-pulse">
+                    testing...
+                  </span>
+                )}
+                {isDone && (
+                  <span className="text-[10px] text-zinc-400 font-mono">
+                    done
+                  </span>
                 )}
               </div>
             </div>

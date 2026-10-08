@@ -5,13 +5,8 @@ import {
   Clock,
   Layers,
   AlertTriangle,
-  FileSearch,
-  Sparkles,
-  Calculator,
-  ShieldAlert,
   ChevronDown,
   ChevronUp,
-  Code2,
   Copy,
   Check,
 } from 'lucide-react';
@@ -44,56 +39,50 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
     discovery_score,
   } = finding;
 
-  // Category Badge Config
-  const getTypeConfig = (category: string) => {
-    switch (category) {
+  // Category Configuration
+  const getTypeBadge = (cat: string) => {
+    switch (cat) {
       case 'correlation':
         return {
-          label: 'RELATIONSHIP',
+          label: 'Strong relationship',
           icon: TrendingUp,
-          bg: 'bg-blue-50 text-blue-700 border-blue-200',
+          badge: 'bg-zinc-100 text-zinc-800 border-zinc-200',
         };
       case 'group_difference':
         return {
-          label: 'GROUP DIFFERENCE',
+          label: 'Group difference',
           icon: GitCompare,
-          bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+          badge: 'bg-zinc-100 text-zinc-800 border-zinc-200',
         };
       case 'time_pattern':
         return {
-          label: 'TIME PATTERN',
+          label: 'Time pattern',
           icon: Clock,
-          bg: 'bg-violet-50 text-violet-700 border-violet-200',
+          badge: 'bg-zinc-100 text-zinc-800 border-zinc-200',
         };
       case 'interaction':
         return {
-          label: 'INTERACTION',
+          label: 'Interaction',
           icon: Layers,
-          bg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+          badge: 'bg-zinc-100 text-zinc-800 border-zinc-200',
         };
       case 'data_quality':
       case 'anomaly':
         return {
-          label: 'DATA QUALITY',
+          label: 'Data quality',
           icon: AlertTriangle,
-          bg: 'bg-amber-50 text-amber-700 border-amber-200',
-        };
-      case 'category_numeric':
-        return {
-          label: 'SUBGROUP DIVERGENCE',
-          icon: GitCompare,
-          bg: 'bg-teal-50 text-teal-700 border-teal-200',
+          badge: 'bg-amber-50 text-amber-900 border-amber-200',
         };
       default:
         return {
-          label: (category || 'PATTERN').toUpperCase().replace('_', ' '),
-          icon: FileSearch,
-          bg: 'bg-zinc-100 text-zinc-700 border-zinc-200',
+          label: cat.replace('_', ' '),
+          icon: TrendingUp,
+          badge: 'bg-zinc-100 text-zinc-800 border-zinc-200',
         };
     }
   };
 
-  const typeConfig = getTypeConfig(type);
+  const typeConfig = getTypeBadge(type);
   const TypeIcon = typeConfig.icon;
 
   // Python-computed evidence narrative
@@ -114,7 +103,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
             : 'N/A'
         }) displays mean ${metric?.group_mean} versus population mean ${
           metric?.overall_mean
-        } (variance = ${metric?.percentage_difference}%).`
+        } (delta = ${metric?.percentage_difference}%).`
       : `Deterministic mathematical evaluation computed across features: ${(
           columns || []
         ).join(', ')}.`);
@@ -122,7 +111,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   // Structured key-value technical metrics
   const technicalEntries = Object.entries({
     ...metric,
-    score: discovery_score ? `${discovery_score} / 100` : undefined,
+    discovery_score: discovery_score ? `${discovery_score} / 100` : undefined,
   }).filter(([, v]) => v !== undefined && typeof v !== 'object');
 
   const rawJsonPayload = JSON.stringify(
@@ -146,43 +135,32 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   };
 
   return (
-    <div className="w-full rounded-xl border border-zinc-200 bg-white p-5 sm:p-6 shadow-xs hover:border-zinc-300 transition-all">
-      {/* Top Bar: Badge, Order, and Columns */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+    <div className="w-full rounded-xl border border-zinc-200 bg-white p-4 sm:p-5 shadow-2xs hover:border-zinc-300 transition-all">
+      {/* Top Meta Line: Type + Columns */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-2">
         <div className="flex items-center space-x-2">
           <span
-            className={`inline-flex items-center space-x-1 rounded-md px-2 py-0.5 text-xs font-semibold tracking-wide border ${typeConfig.bg}`}
+            className={`inline-flex items-center space-x-1 rounded px-2 py-0.5 text-[11px] font-medium border ${typeConfig.badge}`}
           >
             <TypeIcon className="h-3 w-3 mr-0.5" />
-            <span>
-              #{orderNumber} {typeConfig.label}
-            </span>
+            <span>#{orderNumber} {typeConfig.label}</span>
           </span>
 
-          {importance && (
-            <span
-              className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                importance === 'high'
-                  ? 'bg-rose-50 text-rose-700 border border-rose-200 font-semibold'
-                  : 'bg-zinc-100 text-zinc-600'
-              }`}
-            >
-              {importance.toUpperCase()} PRIORITY
+          {importance === 'high' && (
+            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+              High priority
             </span>
           )}
         </div>
 
-        {/* Column pills */}
         {columns && columns.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1 font-mono text-xs text-zinc-600">
+          <div className="flex items-center space-x-1 font-mono text-xs text-zinc-500">
             {columns.map((c, i) => (
               <React.Fragment key={c}>
-                <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-700">
+                <span className="bg-zinc-100 rounded px-1.5 py-0.2 text-zinc-800">
                   {c}
                 </span>
-                {i < columns.length - 1 && (
-                  <span className="text-zinc-400">↔</span>
-                )}
+                {i < columns.length - 1 && <span>↔</span>}
               </React.Fragment>
             ))}
           </div>
@@ -190,42 +168,39 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
       </div>
 
       {/* Finding Title */}
-      <h3 className="text-base sm:text-lg font-semibold text-zinc-950 tracking-tight leading-snug">
+      <h3 className="text-sm sm:text-base font-semibold text-zinc-950 tracking-tight">
         {title}
       </h3>
 
-      {/* Optional Compact Visual Cue */}
-      <VisualCallout finding={finding} />
-
-      {/* Key Metric Highlights Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 my-3.5 bg-zinc-50/80 rounded-lg p-3 border border-zinc-100">
+      {/* Primary Metric Callout */}
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 my-2.5 py-1.5 px-3 bg-zinc-50 rounded-md border border-zinc-100 text-xs">
         {type === 'correlation' && (
           <>
             <div>
-              <p className="text-[11px] text-zinc-500">Correlation (r)</p>
-              <p className="text-sm font-semibold font-mono text-indigo-700">
-                {metric.correlation !== undefined ? metric.correlation : 'N/A'}
-              </p>
+              <span className="text-zinc-500 text-[11px]">Metric:</span>{' '}
+              <strong className="text-zinc-950 font-mono font-semibold text-sm">
+                r = {metric.correlation}
+              </strong>
             </div>
             <div>
-              <p className="text-[11px] text-zinc-500">Direction</p>
-              <p className="text-sm font-semibold text-zinc-800">
+              <span className="text-zinc-500 text-[11px]">Direction:</span>{' '}
+              <span className="text-zinc-800 font-medium">
                 {metric.direction || 'Positive'}
-              </p>
+              </span>
             </div>
             <div>
-              <p className="text-[11px] text-zinc-500">Strength</p>
-              <p className="text-sm font-semibold text-zinc-800">
+              <span className="text-zinc-500 text-[11px]">Strength:</span>{' '}
+              <span className="text-zinc-800 font-medium">
                 {metric.strength || 'Strong'}
-              </p>
+              </span>
             </div>
             <div>
-              <p className="text-[11px] text-zinc-500">Sample Size</p>
-              <p className="text-sm font-semibold font-mono text-zinc-800">
+              <span className="text-zinc-500 text-[11px]">Sample:</span>{' '}
+              <span className="text-zinc-700 font-mono">
                 {metric.sample_size
                   ? Number(metric.sample_size).toLocaleString()
                   : '—'}
-              </p>
+              </span>
             </div>
           </>
         )}
@@ -233,30 +208,29 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
         {type === 'group_difference' && (
           <>
             <div>
-              <p className="text-[11px] text-zinc-500">Subgroup</p>
-              <p className="text-sm font-semibold text-indigo-900 truncate">
-                {metric.group ?? 'N/A'}
-              </p>
+              <span className="text-zinc-500 text-[11px]">Subgroup:</span>{' '}
+              <strong className="text-zinc-950 font-semibold">
+                {metric.group}
+              </strong>
             </div>
             <div>
-              <p className="text-[11px] text-zinc-500">Group Average</p>
-              <p className="text-sm font-semibold font-mono text-zinc-800">
-                {metric.group_mean ?? '—'}
-              </p>
+              <span className="text-zinc-500 text-[11px]">Difference:</span>{' '}
+              <strong className="text-emerald-700 font-mono font-semibold text-sm">
+                {metric.percentage_difference > 0 ? '+' : ''}
+                {metric.percentage_difference}%
+              </strong>
             </div>
             <div>
-              <p className="text-[11px] text-zinc-500">Overall Mean</p>
-              <p className="text-sm font-semibold font-mono text-zinc-800">
-                {metric.overall_mean ?? '—'}
-              </p>
+              <span className="text-zinc-500 text-[11px]">Group Avg:</span>{' '}
+              <span className="text-zinc-800 font-mono">
+                {metric.group_mean}
+              </span>
             </div>
             <div>
-              <p className="text-[11px] text-zinc-500">Variance Delta</p>
-              <p className="text-sm font-semibold font-mono text-emerald-700">
-                {metric.percentage_difference !== undefined
-                  ? `${metric.percentage_difference > 0 ? '+' : ''}${metric.percentage_difference}%`
-                  : '—'}
-              </p>
+              <span className="text-zinc-500 text-[11px]">Population Avg:</span>{' '}
+              <span className="text-zinc-800 font-mono">
+                {metric.overall_mean}
+              </span>
             </div>
           </>
         )}
@@ -264,76 +238,68 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
         {type === 'time_pattern' && (
           <>
             <div>
-              <p className="text-[11px] text-zinc-500">Temporal Dimension</p>
-              <p className="text-sm font-semibold text-zinc-800 capitalize">
+              <span className="text-zinc-500 text-[11px]">Dimension:</span>{' '}
+              <strong className="text-zinc-900 font-medium capitalize">
                 {metric.temporal_unit || 'Time'}
-              </p>
+              </strong>
             </div>
             <div>
-              <p className="text-[11px] text-zinc-500">Peak Segment</p>
-              <p className="text-sm font-semibold text-emerald-700">
+              <span className="text-zinc-500 text-[11px]">Peak:</span>{' '}
+              <strong className="text-emerald-800 font-medium">
                 {metric.peak_segment} ({metric.peak_mean})
-              </p>
+              </strong>
             </div>
             <div>
-              <p className="text-[11px] text-zinc-500">Trough Segment</p>
-              <p className="text-sm font-semibold text-zinc-700">
+              <span className="text-zinc-500 text-[11px]">Trough:</span>{' '}
+              <span className="text-zinc-700">
                 {metric.trough_segment} ({metric.trough_mean})
-              </p>
+              </span>
             </div>
             <div>
-              <p className="text-[11px] text-zinc-500">Cycle Spread</p>
-              <p className="text-sm font-semibold font-mono text-indigo-700">
+              <span className="text-zinc-500 text-[11px]">Cycle Spread:</span>{' '}
+              <span className="text-indigo-700 font-mono font-medium">
                 +{metric.spread_percentage}%
-              </p>
+              </span>
             </div>
           </>
         )}
 
         {type === 'interaction' && (
           <>
-            <div className="col-span-2">
-              <p className="text-[11px] text-zinc-500">Interacting Factors</p>
-              <p className="text-sm font-semibold text-zinc-800">
+            <div>
+              <span className="text-zinc-500 text-[11px]">Factors:</span>{' '}
+              <strong className="text-zinc-900">
                 {(columns || []).slice(0, 2).join(' × ')}
-              </p>
+              </strong>
             </div>
             <div>
-              <p className="text-[11px] text-zinc-500">Effect Ratio</p>
-              <p className="text-sm font-semibold font-mono text-indigo-700">
-                {metric.interaction_effect_ratio ?? '—'}
-              </p>
+              <span className="text-zinc-500 text-[11px]">Effect Ratio:</span>{' '}
+              <strong className="text-indigo-700 font-mono">
+                {metric.interaction_effect_ratio}
+              </strong>
             </div>
             <div>
-              <p className="text-[11px] text-zinc-500">Max Deviation</p>
-              <p className="text-sm font-semibold font-mono text-zinc-800">
-                {metric.max_deviation ?? '—'}
-              </p>
+              <span className="text-zinc-500 text-[11px]">Deviation:</span>{' '}
+              <span className="text-zinc-800 font-mono">
+                {metric.max_deviation}
+              </span>
             </div>
           </>
         )}
 
         {type === 'data_quality' && (
           <>
-            <div className="col-span-2">
-              <p className="text-[11px] text-zinc-500">Audited Feature</p>
-              <p className="text-sm font-semibold text-zinc-800 font-mono">
-                {(columns || []).join(', ')}
-              </p>
-            </div>
-            <div className="col-span-2">
-              <p className="text-[11px] text-zinc-500">Audit Diagnosis</p>
-              <p className="text-sm font-semibold text-amber-700">
+            <div>
+              <span className="text-zinc-500 text-[11px]">Audit:</span>{' '}
+              <strong className="text-amber-800 font-medium">
                 {metric.missing_percentage
-                  ? `${metric.missing_percentage}% Missing Rows`
+                  ? `${metric.missing_percentage}% Missing`
                   : metric.is_exact_duplicate
                   ? '100% Identical Column'
                   : metric.unique_count === 1
-                  ? 'Constant Feature (Zero Variance)'
-                  : metric.outlier_count
-                  ? `${metric.outlier_count} Extreme Outliers (${metric.outlier_percentage}%)`
-                  : 'Data Integrity Alert'}
-              </p>
+                  ? 'Constant Column (0 variance)'
+                  : 'Outliers detected'}
+              </strong>
             </div>
           </>
         )}
@@ -341,73 +307,64 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
         {type === 'category_numeric' && (
           <>
             <div>
-              <p className="text-[11px] text-zinc-500">Max Spread</p>
-              <p className="text-sm font-semibold font-mono text-indigo-700">
-                {metric.spread ?? '—'}
-              </p>
+              <span className="text-zinc-500 text-[11px]">Max Spread:</span>{' '}
+              <strong className="text-zinc-950 font-mono">
+                {metric.spread}
+              </strong>
             </div>
             <div>
-              <p className="text-[11px] text-zinc-500">Spread Ratio</p>
-              <p className="text-sm font-semibold font-mono text-zinc-800">
-                {metric.relative_spread_ratio ?? '—'}σ
-              </p>
-            </div>
-            <div className="col-span-2">
-              <p className="text-[11px] text-zinc-500">Evaluated Groups</p>
-              <p className="text-sm font-semibold text-zinc-800">
-                {metric.groups_evaluated ?? '—'} categories
-              </p>
+              <span className="text-zinc-500 text-[11px]">Ratio:</span>{' '}
+              <span className="text-zinc-800 font-mono">
+                {metric.relative_spread_ratio}σ
+              </span>
             </div>
           </>
         )}
       </div>
 
-      {/* CORE TRUST ARCHITECTURE: AI Interpretation vs Calculated Evidence */}
-      <div className="space-y-2.5 my-3">
-        {/* Box 1: AI Interpretation */}
-        <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 p-3 sm:p-3.5">
-          <div className="flex items-center space-x-1.5 text-xs font-semibold text-indigo-900 mb-1">
-            <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
-            <span>Explained by AI</span>
+      {/* Lightweight Micro-Visual */}
+      <VisualCallout finding={finding} />
+
+      {/* Trust Separation: AI Explanation vs Calculated Evidence */}
+      <div className="space-y-2 my-2.5 text-xs">
+        {/* Box 1: Explained by AI */}
+        <div className="rounded-md border border-zinc-200 bg-white p-3">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1 font-semibold">
+            Explained by AI
           </div>
-          <p className="text-xs sm:text-sm text-zinc-800 leading-relaxed font-normal">
+          <p className="text-zinc-800 leading-relaxed">
             {explanation}
           </p>
         </div>
 
-        {/* Box 2: Calculated Statistical Evidence */}
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50/70 p-3 sm:p-3.5">
-          <div className="flex items-center space-x-1.5 text-xs font-semibold text-zinc-800 mb-1">
-            <Calculator className="h-3.5 w-3.5 text-zinc-600" />
-            <span>Calculated by DataPilot</span>
-            <span className="text-[10px] text-zinc-500 font-normal font-mono">
-              (Python / Pandas)
-            </span>
+        {/* Box 2: Calculated by DataPilot */}
+        <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1 font-semibold">
+            Calculated by DataPilot (Python / Pandas)
           </div>
-          <p className="text-xs text-zinc-700 leading-relaxed font-mono">
+          <p className="text-zinc-700 font-mono text-[11px] leading-relaxed">
             {pythonEvidenceText}
           </p>
         </div>
 
-        {/* Box 3: Caution (if present) */}
+        {/* Caution (if applicable) */}
         {caution && (
-          <div className="rounded-lg border border-amber-200/90 bg-amber-50/60 p-3">
-            <div className="flex items-center space-x-1.5 text-xs font-semibold text-amber-900 mb-0.5">
-              <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
-              <span>Analytical Caution</span>
-            </div>
-            <p className="text-xs text-amber-800/90 leading-relaxed">
+          <div className="rounded-md border border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900">
+            <span className="font-semibold text-[10px] font-mono uppercase tracking-wider block mb-0.5 text-amber-800">
+              Analytical Caution
+            </span>
+            <p className="text-amber-800/90 text-[11px] leading-relaxed">
               {caution}
             </p>
           </div>
         )}
       </div>
 
-      {/* Technical Evidence Expansion Drawer */}
-      <div className="pt-2 border-t border-zinc-100 mt-3">
+      {/* Technical Evidence Drawer */}
+      <div className="pt-2 border-t border-zinc-100 mt-2">
         <button
           onClick={() => setIsEvidenceExpanded(!isEvidenceExpanded)}
-          className="inline-flex items-center space-x-1.5 text-xs font-medium text-zinc-600 hover:text-zinc-950 transition-colors cursor-pointer py-1"
+          className="inline-flex items-center space-x-1 text-xs font-medium text-zinc-600 hover:text-zinc-950 transition-colors cursor-pointer py-0.5"
         >
           {isEvidenceExpanded ? (
             <ChevronUp className="h-3.5 w-3.5" />
@@ -415,31 +372,28 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
             <ChevronDown className="h-3.5 w-3.5" />
           )}
           <span>
-            {isEvidenceExpanded ? 'Hide Technical Evidence' : 'Show Technical Evidence'}
+            {isEvidenceExpanded ? 'Hide technical evidence' : 'Show technical evidence'}
           </span>
         </button>
 
         {isEvidenceExpanded && (
-          <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-900 text-zinc-100 p-4 font-mono text-xs">
-            <div className="flex items-center justify-between pb-2 mb-3 border-b border-zinc-800">
-              <div className="flex items-center space-x-2 text-[11px] text-zinc-400">
-                <Code2 className="h-3.5 w-3.5 text-indigo-400" />
-                <span>Deterministic Evidence Schema • ID: {id}</span>
-              </div>
+          <div className="mt-2.5 rounded-lg border border-zinc-200 bg-zinc-50 p-3.5 text-xs">
+            <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-zinc-200 text-zinc-500 text-[11px] font-mono">
+              <span>Finding ID: {id}</span>
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setShowRawJson(!showRawJson)}
-                  className="text-[11px] text-zinc-400 hover:text-white underline cursor-pointer"
+                  className="hover:text-zinc-900 underline cursor-pointer"
                 >
-                  {showRawJson ? 'Structured View' : 'Raw JSON'}
+                  {showRawJson ? 'Structured view' : 'Raw result'}
                 </button>
                 <button
                   onClick={handleCopyJson}
-                  className="inline-flex items-center space-x-1 text-[11px] text-zinc-400 hover:text-white cursor-pointer ml-2"
+                  className="inline-flex items-center space-x-1 hover:text-zinc-900 cursor-pointer ml-2"
                   title="Copy payload"
                 >
                   {hasCopied ? (
-                    <Check className="h-3 w-3 text-emerald-400" />
+                    <Check className="h-3 w-3 text-emerald-600" />
                   ) : (
                     <Copy className="h-3 w-3" />
                   )}
@@ -449,25 +403,17 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
             </div>
 
             {showRawJson ? (
-              <pre className="overflow-x-auto text-[11px] text-zinc-300 max-h-60 leading-relaxed">
+              <pre className="overflow-x-auto text-[11px] text-zinc-800 bg-white p-2.5 rounded border border-zinc-200 font-mono max-h-48 leading-relaxed">
                 {rawJsonPayload}
               </pre>
             ) : (
-              <div className="space-y-1.5 text-[11px]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-[11px] font-mono">
                 {technicalEntries.map(([k, v]) => (
-                  <div key={k} className="flex flex-wrap justify-between gap-2 py-0.5 border-b border-zinc-800/60">
-                    <span className="text-zinc-400">{k}:</span>
-                    <span className="text-indigo-300 font-semibold">{String(v)}</span>
+                  <div key={k} className="flex justify-between py-0.5 border-b border-zinc-200/60">
+                    <span className="text-zinc-500">{k}:</span>
+                    <span className="text-zinc-900 font-semibold">{String(v)}</span>
                   </div>
                 ))}
-                {evidence && typeof evidence === 'object' && (
-                  <div className="pt-2">
-                    <span className="text-zinc-400 block mb-1">evidence_details:</span>
-                    <pre className="bg-zinc-950/80 p-2 rounded text-[10px] text-zinc-300 overflow-x-auto">
-                      {JSON.stringify(evidence, null, 2)}
-                    </pre>
-                  </div>
-                )}
               </div>
             )}
           </div>
