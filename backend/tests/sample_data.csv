@@ -1,0 +1,9 @@
+city,temperature,humidity,rainfall,air_quality_index
+New York,72.5,65,0.2,45
+London,60.1,80,1.5,35
+Tokyo,78.3,70,0.8,50
+Paris,68.4,75,0.4,40
+Sydney,75.0,60,0.0,30
+Mumbai,88.2,85,5.2,110
+Cairo,95.0,35,0.0,85
+Berlin,64.2,68,0.3,38
