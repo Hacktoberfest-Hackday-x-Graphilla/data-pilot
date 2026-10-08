@@ -88,6 +88,10 @@ class DiscoveryEngine:
         ranked_candidates = self._rank_candidates(candidates)
         top_candidates = ranked_candidates[:15]  # Send top 15 to reasoning layer
 
+        # Build verified, bounded visualizations deterministically from raw dataset
+        for c in top_candidates:
+            c["visualization"] = self._build_visualization(df, c)
+
         # 4. LLM Ranking & Explanation with Candidate-ID Validation & Safe Fallback
         final_findings = self._synthesize_with_llm(
             filename=filename,
@@ -899,6 +903,9 @@ class DiscoveryEngine:
             explanation = item.get("explanation") or orig["explanation"]
             caution = item.get("caution") or orig.get("caution")
 
+            viz_data = orig.get("visualization")
+            viz_obj = VisualizationSpec(**viz_data) if viz_data else None
+
             validated.append(
                 DiscoveryFinding(
                     id=cand_id,
@@ -907,6 +914,7 @@ class DiscoveryEngine:
                     columns=orig["columns"],
                     metric=orig["metric"],
                     evidence=orig["evidence"],
+                    visualization=viz_obj,
                     explanation=explanation,
                     caution=caution,
                     importance=importance,
@@ -923,6 +931,8 @@ class DiscoveryEngine:
         """Generates deterministic validated findings directly from calculated statistical evidence."""
         findings = []
         for c in top_candidates:
+            viz_data = c.get("visualization")
+            viz_obj = VisualizationSpec(**viz_data) if viz_data else None
             findings.append(
                 DiscoveryFinding(
                     id=c["id"],
@@ -931,6 +941,7 @@ class DiscoveryEngine:
                     columns=c["columns"],
                     metric=c["metric"],
                     evidence=c["evidence"],
+                    visualization=viz_obj,
                     explanation=c["explanation"],
                     caution=c.get("caution"),
                     importance=c.get("importance", "medium"),
@@ -938,6 +949,232 @@ class DiscoveryEngine:
                 )
             )
         return findings
+
+    # -------------------------------------------------------------------------
+    # Visualization Specification Builder
+    # -------------------------------------------------------------------------
+    def _build_visualization(self, df: pd.DataFrame, candidate: dict[str, Any]) -> Optional[dict[str, Any]]:
+        """Constructs bounded, deterministic visualization specification based on discovery category."""
+        c_type = candidate.get("type")
+        cols = candidate.get("columns", [])
+
+        try:
+            # 1. Numeric Correlation -> Scatter Plot
+            if c_type == "correlation" and len(cols) >= 2:
+                col_a, col_b = cols[0], cols[1]
+                if col_a not in df.columns or col_b not in df.columns:
+                    return None
+
+                paired = df[[col_a, col_b]].dropna()
+                n = len(paired)
+                if n < 2:
+                    return None
+
+                # Bounded deterministic sampling:
+                # If n <= 500: use all relevant points
+                # If n > 500: deterministically sample down to ~400 points
+                if n > 500:
+                    indices = np.linspace(0, n - 1, 400).astype(int)
+                    sampled = paired.iloc[indices]
+                else:
+                    sampled = paired
+
+                chart_data = []
+                for _, row in sampled.iterrows():
+                    val_a = row[col_a]
+                    val_b = row[col_b]
+                    chart_data.append({
+                        col_a: round(float(val_a), 4) if isinstance(val_a, (float, np.floating)) else int(val_a),
+                        col_b: round(float(val_b), 4) if isinstance(val_b, (float, np.floating)) else int(val_b),
+                    })
+
+                title = f"{col_a.replace('_', ' ').title()} vs {col_b.replace('_', ' ').title()}"
+                return {
+                    "chart_type": "scatter",
+                    "title": title,
+                    "x_label": col_a.replace("_", " ").title(),
+                    "y_label": col_b.replace("_", " ").title(),
+                    "x_key": col_a,
+                    "y_key": col_b,
+                    "data": chart_data,
+                }
+
+            # 2. Group Difference -> Bar Chart
+            elif c_type == "group_difference" and len(cols) >= 2:
+                grp_col, metric_col = cols[0], cols[1]
+                if grp_col not in df.columns or metric_col not in df.columns:
+                    return None
+
+                sub_df = df[[grp_col, metric_col]].dropna()
+                if len(sub_df) == 0:
+                    return None
+
+                grouped_means = sub_df.groupby(grp_col, observed=True)[metric_col].mean()
+                if len(grouped_means) < 2:
+                    return None
+
+                # Keep up to 10 categories, ensuring the focal group from the finding is preserved
+                focal_group = candidate.get("metric", {}).get("group")
+                if len(grouped_means) > 10:
+                    top_groups = list(sub_df[grp_col].value_counts().head(10).index)
+                    if focal_group and focal_group not in top_groups and focal_group in grouped_means.index:
+                        top_groups[-1] = focal_group
+                    grouped_means = grouped_means.loc[[g for g in top_groups if g in grouped_means.index]]
+
+                chart_data = []
+                for grp_val, mean_val in grouped_means.items():
+                    chart_data.append({
+                        grp_col: str(grp_val),
+                        metric_col: round(float(mean_val), 2),
+                    })
+
+                title = f"Average {metric_col.replace('_', ' ').title()} by {grp_col.replace('_', ' ').title()}"
+                return {
+                    "chart_type": "bar",
+                    "title": title,
+                    "x_label": grp_col.replace("_", " ").title(),
+                    "y_label": f"Average {metric_col.replace('_', ' ').title()}",
+                    "x_key": grp_col,
+                    "y_key": metric_col,
+                    "data": chart_data,
+                }
+
+            # 3. Category x Numeric -> Bar Chart
+            elif c_type == "category_numeric" and len(cols) >= 2:
+                cat_col, num_col = cols[0], cols[1]
+                if cat_col not in df.columns or num_col not in df.columns:
+                    return None
+
+                sub_df = df[[cat_col, num_col]].dropna()
+                if len(sub_df) == 0:
+                    return None
+
+                grouped_means = sub_df.groupby(cat_col, observed=True)[num_col].mean()
+                if len(grouped_means) < 2:
+                    return None
+
+                if len(grouped_means) > 10:
+                    top_cats = list(sub_df[cat_col].value_counts().head(10).index)
+                    grouped_means = grouped_means.loc[[c for c in top_cats if c in grouped_means.index]]
+
+                chart_data = []
+                for cat_val, mean_val in grouped_means.items():
+                    chart_data.append({
+                        cat_col: str(cat_val),
+                        num_col: round(float(mean_val), 2),
+                    })
+
+                title = f"Average {num_col.replace('_', ' ').title()} by {cat_col.replace('_', ' ').title()}"
+                return {
+                    "chart_type": "bar",
+                    "title": title,
+                    "x_label": cat_col.replace("_", " ").title(),
+                    "y_label": f"Average {num_col.replace('_', ' ').title()}",
+                    "x_key": cat_col,
+                    "y_key": num_col,
+                    "data": chart_data,
+                }
+
+            # 4. Time Pattern -> Line Chart
+            elif c_type == "time_pattern" and len(cols) >= 2:
+                dt_col, num_col = cols[0], cols[1]
+                temp_unit = candidate.get("metric", {}).get("temporal_unit", "time")
+
+                segment_means = candidate.get("evidence", {}).get("segment_means")
+                if not segment_means:
+                    parsed = pd.to_datetime(df[dt_col], errors="coerce")
+                    valid_mask = parsed.notna() & df[num_col].notna()
+                    if valid_mask.sum() < 5:
+                        return None
+
+                    if temp_unit == "hour":
+                        segs = parsed[valid_mask].dt.hour
+                    elif temp_unit == "day_of_week":
+                        segs = parsed[valid_mask].dt.day_name()
+                    elif temp_unit == "month":
+                        segs = parsed[valid_mask].dt.month_name()
+                    else:
+                        segs = parsed[valid_mask].dt.date.astype(str)
+
+                    eval_df = pd.DataFrame({"seg": segs, "val": df.loc[valid_mask, num_col]})
+                    segment_means = {str(k): round(float(v), 2) for k, v in eval_df.groupby("seg", observed=True)["val"].mean().items()}
+
+                # Chronological sorting of segments
+                sorted_segments = list(segment_means.keys())
+                if temp_unit == "hour":
+                    try:
+                        sorted_segments = sorted(sorted_segments, key=lambda x: int(x))
+                    except Exception:
+                        sorted_segments = sorted(sorted_segments)
+                elif temp_unit == "day_of_week":
+                    days_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                    day_rank = {d.lower(): i for i, d in enumerate(days_order)}
+                    sorted_segments = sorted(sorted_segments, key=lambda x: day_rank.get(str(x).lower(), 99))
+                elif temp_unit == "month":
+                    month_order = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+                    month_rank = {m.lower(): i for i, m in enumerate(month_order)}
+                    sorted_segments = sorted(sorted_segments, key=lambda x: month_rank.get(str(x).lower(), 99))
+                else:
+                    sorted_segments = sorted(sorted_segments)
+
+                chart_data = []
+                for seg in sorted_segments:
+                    val = segment_means.get(seg)
+                    if val is not None:
+                        chart_data.append({
+                            temp_unit: str(seg),
+                            num_col: round(float(val), 2),
+                        })
+
+                if len(chart_data) < 2:
+                    return None
+
+                title = f"Average {num_col.replace('_', ' ').title()} by {temp_unit.replace('_', ' ').title()}"
+                return {
+                    "chart_type": "line",
+                    "title": title,
+                    "x_label": temp_unit.replace("_", " ").title(),
+                    "y_label": f"Average {num_col.replace('_', ' ').title()}",
+                    "x_key": temp_unit,
+                    "y_key": num_col,
+                    "data": chart_data,
+                }
+
+            # 5. Possible Interaction -> Bar Chart
+            elif c_type == "interaction" and len(cols) >= 3:
+                c1, c2, num_col = cols[0], cols[1], cols[2]
+                cells = candidate.get("evidence", {}).get("cells", {})
+                if not cells:
+                    return None
+
+                chart_data = []
+                for cell_combo, cell_stats in list(cells.items())[:8]:
+                    chart_data.append({
+                        "combination": cell_combo,
+                        num_col: cell_stats.get("actual_mean", 0.0),
+                    })
+
+                if len(chart_data) < 2:
+                    return None
+
+                title = f"Average {num_col.replace('_', ' ').title()} across {c1} & {c2}"
+                return {
+                    "chart_type": "bar",
+                    "title": title,
+                    "x_label": f"{c1} + {c2}",
+                    "y_label": f"Average {num_col.replace('_', ' ').title()}",
+                    "x_key": "combination",
+                    "y_key": num_col,
+                    "data": chart_data,
+                }
+
+            # 6. Data Quality -> No chart (return None)
+            elif c_type == "data_quality":
+                return None
+
+            return None
+        except Exception:
+            return None
 
 
 discovery_engine = DiscoveryEngine()
