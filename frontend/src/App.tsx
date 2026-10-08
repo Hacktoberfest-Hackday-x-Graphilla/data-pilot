@@ -1,122 +1,239 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useState, useEffect } from 'react';
+import { Header } from './components/Header';
+import { UploadZone } from './components/UploadZone';
+import { DatasetOverview } from './components/DatasetOverview';
+import { DiscoveryCTA } from './components/DiscoveryCTA';
+import { DiscoveryProgress } from './components/DiscoveryProgress';
+import { DiscoveryReportView } from './components/DiscoveryReportView';
+import { ErrorState } from './components/ErrorState';
+import { uploadDataset, profileDataset } from './api/datasets';
+import { discoverPatterns, checkHealth } from './api/discovery';
+import {
+  DatasetSummary,
+  ProfileReport,
+  DiscoveryResponse,
+  HealthResponse,
+} from './api/types';
 
-function App() {
-  const [count, setCount] = useState(0)
+type AppStep = 'idle' | 'uploading' | 'ready' | 'discovering' | 'complete' | 'error';
+
+export function App() {
+  const [step, setStep] = useState<AppStep>('idle');
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [healthLoading, setHealthLoading] = useState(true);
+
+  // Active dataset state
+  const [dataset, setDataset] = useState<DatasetSummary | null>(null);
+  const [profile, setProfile] = useState<ProfileReport | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+  // Discovery state
+  const [maxFindings, setMaxFindings] = useState<number>(5);
+  const [discoveryReport, setDiscoveryReport] = useState<DiscoveryResponse | null>(null);
+
+  // Errors
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [generalError, setGeneralError] = useState<string | null>(null);
+
+  // Check backend health on initial load
+  useEffect(() => {
+    let isMounted = true;
+    checkHealth()
+      .then((data) => {
+        if (isMounted) {
+          setHealth(data);
+          setHealthLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setHealth(null);
+          setHealthLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Upload handler
+  const handleUploadFile = async (file: File) => {
+    setUploadError(null);
+    setGeneralError(null);
+    setStep('uploading');
+
+    try {
+      const summary = await uploadDataset(file);
+      setDataset(summary);
+      setStep('ready');
+
+      // Fetch profile asynchronously in background to enrich overview
+      setIsLoadingProfile(true);
+      profileDataset(summary.dataset_id)
+        .then((prof) => {
+          setProfile(prof);
+          setIsLoadingProfile(false);
+        })
+        .catch(() => {
+          setIsLoadingProfile(false);
+        });
+    } catch (err: any) {
+      setStep('idle');
+      setUploadError(
+        err.message ||
+          'Failed to parse or upload the CSV file. Please ensure it is a valid format.'
+      );
+    }
+  };
+
+  // Discovery action handler
+  const handleDiscover = async (count: number) => {
+    if (!dataset) return;
+
+    setGeneralError(null);
+    setStep('discovering');
+
+    try {
+      const report = await discoverPatterns(dataset.dataset_id, count);
+      setDiscoveryReport(report);
+      setStep('complete');
+    } catch (err: any) {
+      setStep('error');
+      setGeneralError(
+        err.message ||
+          "DataPilot couldn't analyze this dataset. The backend analysis service may be unavailable or experienced an error."
+      );
+    }
+  };
+
+  // Reset to initial upload state
+  const handleReset = () => {
+    setDataset(null);
+    setProfile(null);
+    setDiscoveryReport(null);
+    setUploadError(null);
+    setGeneralError(null);
+    setStep('idle');
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="min-h-screen flex flex-col bg-zinc-50 text-zinc-900 font-sans">
+      <Header
+        health={health}
+        healthLoading={healthLoading}
+        hasActiveDataset={!!dataset}
+        onReset={handleReset}
+      />
 
-      <div className="ticks"></div>
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        {/* Step: IDLE (Upload zone) */}
+        {step === 'idle' && (
+          <UploadZone
+            onUploadFile={handleUploadFile}
+            isUploading={false}
+            uploadError={uploadError}
+            onClearError={() => setUploadError(null)}
+          />
+        )}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {/* Step: UPLOADING */}
+        {step === 'uploading' && (
+          <UploadZone
+            onUploadFile={handleUploadFile}
+            isUploading={true}
+            uploadError={null}
+          />
+        )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        {/* Step: READY (Dataset Loaded, CTA to discover) */}
+        {step === 'ready' && dataset && (
+          <div className="space-y-6">
+            <DatasetOverview
+              dataset={dataset}
+              profile={profile}
+              isLoadingProfile={isLoadingProfile}
+              onRemoveDataset={handleReset}
+            />
+
+            <DiscoveryCTA
+              onDiscover={handleDiscover}
+              isDiscovering={false}
+              maxFindings={maxFindings}
+              onMaxFindingsChange={setMaxFindings}
+            />
+          </div>
+        )}
+
+        {/* Step: DISCOVERING (Staged progress) */}
+        {step === 'discovering' && dataset && (
+          <div className="space-y-6">
+            <DatasetOverview
+              dataset={dataset}
+              profile={profile}
+              isLoadingProfile={false}
+              onRemoveDataset={handleReset}
+            />
+
+            <DiscoveryProgress />
+          </div>
+        )}
+
+        {/* Step: COMPLETE (Discovery report & cards) */}
+        {step === 'complete' && discoveryReport && (
+          <div className="space-y-6">
+            {dataset && (
+              <DatasetOverview
+                dataset={dataset}
+                profile={profile}
+                isLoadingProfile={false}
+                onRemoveDataset={handleReset}
+              />
+            )}
+
+            <DiscoveryReportView
+              report={discoveryReport}
+              onRunAgain={() => handleDiscover(maxFindings)}
+              onReset={handleReset}
+            />
+          </div>
+        )}
+
+        {/* Step: ERROR */}
+        {step === 'error' && (
+          <div className="space-y-6">
+            {dataset && (
+              <DatasetOverview
+                dataset={dataset}
+                profile={profile}
+                isLoadingProfile={false}
+                onRemoveDataset={handleReset}
+              />
+            )}
+
+            <ErrorState
+              message={
+                generalError ||
+                'An unexpected error occurred while communicating with DataPilot.'
+              }
+              onRetry={() => handleDiscover(maxFindings)}
+              onReset={handleReset}
+            />
+          </div>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="w-full border-t border-zinc-200 py-6 text-center text-xs text-zinc-400 bg-white">
+        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>DataPilot — Questionless AI Dataset Discovery Engine</span>
+          <span className="font-mono text-zinc-400">
+            Statistical Evidence via Python • Explanations via LLM
+          </span>
+        </div>
+      </footer>
+    </div>
+  );
 }
 
-export default App
+export default App;
