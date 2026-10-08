@@ -10,6 +10,7 @@ from app.models.schemas import (
     DiscoveryFinding,
     DiscoveryResponse,
     DiscoverySummary,
+    VisualizationSpec,
 )
 from app.services.ai_agent import ai_agent
 from app.services.dataset_store import dataset_store
