@@ -631,8 +631,8 @@ class DiscoveryEngine:
                     },
                     "explanation": f"Column '{col}' contains only a single constant value ('{const_val}') across all non-null entries.",
                     "caution": "Constant variables carry zero variance and provide no analytical or discriminatory signal.",
-                    "importance": "medium",
-                    "discovery_score": 55.0,
+                    "importance": "high",
+                    "discovery_score": 75.0,
                 })
                 cand_idx += 1
 
@@ -653,9 +653,10 @@ class DiscoveryEngine:
                         "explanation": f"Columns '{c1}' and '{c2}' have 100% identical values across all rows, indicating redundant data.",
                         "caution": "One of these columns may be redundant or an unversioned copy of the other.",
                         "importance": "high",
-                        "discovery_score": 65.0,
+                        "discovery_score": 72.0,
                     })
                     cand_idx += 1
+
 
         # D. Extreme Statistical Outliers
         for num_col in numeric_cols:
