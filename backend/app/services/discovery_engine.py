@@ -263,6 +263,8 @@ class DiscoveryEngine:
 
         for cat_col in categorical_cols:
             for num_col in numeric_cols:
+                if cat_col == num_col:
+                    continue
                 sub_df = df[[cat_col, num_col]].dropna()
                 if len(sub_df) < 10:
                     continue
@@ -332,9 +334,12 @@ class DiscoveryEngine:
 
         for cat_col in categorical_cols:
             for num_col in numeric_cols:
+                if cat_col == num_col:
+                    continue
                 sub_df = df[[cat_col, num_col]].dropna()
                 if len(sub_df) < 15:
                     continue
+
 
                 grouped = sub_df.groupby(cat_col, observed=True)[num_col]
                 valid_groups = [g for g, cnt in grouped.count().items() if cnt >= 3]
@@ -416,6 +421,8 @@ class DiscoveryEngine:
             for dim_name, dim_series in temporal_dimensions.items():
                 temp_df["_dim"] = dim_series
                 for num_col in numeric_cols:
+                    if num_col == dt_col:
+                        continue
                     metric_series = df.loc[valid_dt_mask, num_col].dropna()
                     shared_idx = temp_df.index.intersection(metric_series.index)
                     if len(shared_idx) < 15:
@@ -498,9 +505,12 @@ class DiscoveryEngine:
                 c2 = compact_cats[j]
 
                 for num_col in numeric_cols:
+                    if num_col in (c1, c2):
+                        continue
                     sub_df = df[[c1, c2, num_col]].dropna()
                     if len(sub_df) < 20:
                         continue
+
 
                     # Compute 2-way cell means
                     grouped = sub_df.groupby([c1, c2], observed=True)[num_col]
