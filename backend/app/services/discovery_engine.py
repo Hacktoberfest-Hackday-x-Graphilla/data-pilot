@@ -135,15 +135,19 @@ class DiscoveryEngine:
             if pd.api.types.is_object_dtype(series) or pd.api.types.is_string_dtype(series):
                 sample = non_null.head(50)
                 try:
-                    parsed = pd.to_datetime(sample, errors="coerce")
-                    if parsed.notna().sum() / len(sample) >= 0.8:
-                        # Full parse check
-                        full_parsed = pd.to_datetime(non_null, errors="coerce")
-                        if full_parsed.notna().sum() / len(non_null) >= 0.7:
-                            datetime_cols.append(col)
-                            continue
+                    import warnings
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        parsed = pd.to_datetime(sample, errors="coerce")
+                        if parsed.notna().sum() / len(sample) >= 0.8:
+                            # Full parse check
+                            full_parsed = pd.to_datetime(non_null, errors="coerce")
+                            if full_parsed.notna().sum() / len(non_null) >= 0.7:
+                                datetime_cols.append(col)
+                                continue
                 except Exception:
                     pass
+
 
             # Check Numeric
             if pd.api.types.is_numeric_dtype(series) and not pd.api.types.is_bool_dtype(series):
