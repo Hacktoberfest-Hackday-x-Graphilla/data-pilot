@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataPilot - Questionless Dataset Discovery</title>
+    <meta name="description" content="AI-assisted dataset discovery tool that investigates uploaded datasets for statistically interesting relationships, differences, interactions, and anomalies without requiring predefined questions.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-background"></div>
+
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand">
+                <div class="brand-logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="m4.93 4.93 4.24 4.24"></path>
+                        <path d="m14.83 9.17 4.24-4.24"></path>
+                        <path d="m14.83 14.83 4.24 4.24"></path>
+                        <path d="m9.17 14.83-4.24 4.24"></path>
+                        <circle cx="12" cy="12" r="4"></circle>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>DataPilot</h1>
+                    <span class="brand-tag">Discovery Engine</span>
+                </div>
+            </div>
+            <div class="header-status">
+                <span class="status-pill online">
+                    <span class="dot"></span>
+                    Engine Online
+                </span>
+                <span class="status-pill provider" id="providerBadge">
+                    Gemini / Gemma Ready
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Hero Introduction -->
+        <section class="hero-section">
+            <div class="hero-content">
+                <h2 class="hero-title">Questionless Dataset Discovery</h2>
+                <p class="hero-subtitle">
+                    Upload your data without knowing what to ask. DataPilot systematically computes candidate statistical relationships, group divergences, interactions, and data-quality anomalies — with verified numerical evidence and clear AI reasoning.
+                </p>
+            </div>
+        </section>
+
+        <!-- Upload & Dataset Panel -->
+        <section class="card upload-card" id="uploadSection">
+            <div class="upload-dropzone" id="dropzone">
+                <input type="file" id="fileInput" accept=".csv" class="file-input" />
+                <div class="dropzone-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                </div>
+                <h3 class="dropzone-title">Upload a CSV Dataset</h3>
+                <p class="dropzone-desc">Drag & drop your CSV file here, or click to browse</p>
+                <div class="quick-sample-box">
+                    <span>Or test immediately:</span>
+                    <button type="button" class="btn-sample" id="loadSampleBtn">
+                        Load Sample Sales & Retail Dataset
+                    </button>
+                </div>
+            </div>
+
+            <!-- Uploaded Dataset Info (Hidden until file is loaded) -->
+            <div class="dataset-meta-panel" id="datasetMetaPanel" style="display: none;">
+                <div class="meta-header">
+                    <div class="meta-filename">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                        <span id="metaFilename">dataset.csv</span>
+                    </div>
+                    <div class="meta-metrics">
+                        <span class="meta-tag"><strong id="metaRowCount">0</strong> rows</span>
+                        <span class="meta-tag"><strong id="metaColCount">0</strong> columns</span>
+                        <span class="meta-tag"><strong id="metaMemory">0</strong> MB</span>
+                    </div>
+                </div>
+
+                <div class="meta-columns-list" id="metaColumnsList">
+                    <!-- Column badges injected via JS -->
+                </div>
+
+                <!-- Prominent Action Button -->
+                <div class="action-bar">
+                    <button type="button" class="btn-discover" id="discoverBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
+                        Discover Hidden Patterns
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading State Panel -->
+        <section class="card loading-card" id="loadingSection" style="display: none;">
+            <div class="loading-container">
+                <div class="pulse-orb">
+                    <div class="orb-inner"></div>
+                </div>
+                <h3 class="loading-title">Investigating Dataset</h3>
+                <p class="loading-step" id="loadingStatusText">Profiling dataset structure...</p>
+                <div class="loading-progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="loading-subnote">
+                    Python is computing statistical tests • AI is formulating evidence explanations
+                </div>
+            </div>
+        </section>
+
+        <!-- Discovery Report Container -->
+        <section class="discovery-report" id="reportSection" style="display: none;">
+            <div class="report-header-card">
+                <div class="report-header-left">
+                    <span class="report-kicker">DISCOVERY REPORT</span>
+                    <h2 class="report-title" id="reportDatasetTitle">sales.csv</h2>
+                </div>
+                <div class="report-header-stats" id="reportSummaryStats">
+                    <div class="stat-box">
+                        <span class="stat-num" id="statExamined">0</span>
+                        <span class="stat-label">Analyses Examined</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-num" id="statReturned">0</span>
+                        <span class="stat-label">Key Discoveries</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-num" id="statTime">0ms</span>
+                        <span class="stat-label">Compute Time</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Discovery Cards List -->
+            <div class="discovery-cards-list" id="discoveryCardsList">
+                <!-- Dynamically populated cards -->
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <div class="footer-container">
+            <p>DataPilot • AI-Assisted Dataset Discovery Engine • Deterministic Python Compute with LLM Reasoning</p>
+        </div>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
