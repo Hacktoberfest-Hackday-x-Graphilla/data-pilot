@@ -123,7 +123,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   const technicalEntries = Object.entries({
     ...metric,
     score: discovery_score ? `${discovery_score} / 100` : undefined,
-  }).filter(([_, v]) => v !== undefined && typeof v !== 'object');
+  }).filter(([, v]) => v !== undefined && typeof v !== 'object');
 
   const rawJsonPayload = JSON.stringify(
     {
