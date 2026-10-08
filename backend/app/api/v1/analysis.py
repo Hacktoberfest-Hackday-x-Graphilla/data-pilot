@@ -4,6 +4,8 @@ from fastapi import APIRouter, HTTPException, status
 from app.models.schemas import (
     ChatRequest,
     ChatResponse,
+    DiscoveryRequest,
+    DiscoveryResponse,
     InvestigateResponse,
     ProfileReport,
     ToolExecutionRequest,
@@ -11,6 +13,7 @@ from app.models.schemas import (
 )
 from app.services.dataset_store import dataset_store
 from app.services.ai_agent import ai_agent
+from app.services.discovery_engine import discovery_engine
 from app.tools.registry import (
     GEMINI_FUNCTION_DECLARATIONS,
     TOOL_MAP,
@@ -19,6 +22,7 @@ from app.tools.registry import (
 from app.tools.profiling import profile_dataset
 
 router = APIRouter()
+
 
 @router.post("/datasets/{dataset_id}/profile", response_model=ProfileReport)
 def profile_dataset_endpoint(dataset_id: str):
@@ -124,6 +128,54 @@ def investigate_dataset(dataset_id: str):
             detail=f"Error executing investigation: {str(ex)}",
         )
 
+@router.post("/discovery", response_model=DiscoveryResponse)
+def discover_dataset_patterns(request: DiscoveryRequest):
+    """Executes Questionless Dataset Discovery systematically analyzing statistical relationships."""
+    df = dataset_store.get_dataset(request.dataset_id)
+    if df is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Dataset with ID '{request.dataset_id}' not found.",
+        )
+
+    try:
+        response = discovery_engine.discover(
+            dataset_id=request.dataset_id,
+            max_findings=request.max_findings,
+        )
+        return response
+    except KeyError as ke:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(ke))
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error during dataset discovery: {str(ex)}",
+        )
+
+@router.post("/datasets/{dataset_id}/discovery", response_model=DiscoveryResponse)
+def discover_dataset_by_path(dataset_id: str, max_findings: int = 5):
+    """Executes Questionless Dataset Discovery for a specific dataset ID path parameter."""
+    df = dataset_store.get_dataset(dataset_id)
+    if df is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Dataset with ID '{dataset_id}' not found.",
+        )
+
+    try:
+        response = discovery_engine.discover(
+            dataset_id=dataset_id,
+            max_findings=max_findings,
+        )
+        return response
+    except KeyError as ke:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(ke))
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error during dataset discovery: {str(ex)}",
+        )
+
 @router.get("/tools")
 def get_available_tools():
     """Lists all available analytical tools and their Gemini function calling definitions."""
@@ -131,3 +183,4 @@ def get_available_tools():
         "tools": list(TOOL_MAP.keys()),
         "gemini_function_declarations": GEMINI_FUNCTION_DECLARATIONS,
     }
+
